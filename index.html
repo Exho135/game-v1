@@ -1,115 +1,11 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>My Game</title>
-    <style>
-      /* Remove default white border around the page */
-      * {
-        margin: 0;
-        padding: 0;
-      }
-
-      /* Make the page background black */
-      body {
-        background: #000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-      }
-
-      /* The game screen */
-      canvas {
-        border: 2px solid #333;
-      }
-    </style>
+    <title>Chop Chop</title>
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
-
-    <!-- This is your game screen. Width and height are in pixels. -->
     <canvas id="gameCanvas" width="800" height="600"></canvas>
-
-    <script>
-      // Get a reference to the canvas element
-      const canvas = document.getElementById('gameCanvas');
-
-      // Get the drawing tool - this is what lets us draw on the canvas
-      const ctx = canvas.getContext('2d');
-
-      // ── PLAYER ──────────────────────────────────────────
-      // The player is just an object with properties
-      const player = {
-        x: canvas.width / 2,   // starting X position (centre of screen)
-        y: canvas.height / 2,  // starting Y position (centre of screen)
-        size: 16,               // how big the player is in pixels
-        speed: 4,               // how many pixels it moves per frame
-        color: '#5de0a0'        // colour of the player
-      };
-
-      // ── KEYBOARD INPUT ───────────────────────────────────
-      // An object that tracks which keys are currently held down
-      const keys = {};
-
-      window.addEventListener('keydown', e => {
-        keys[e.key] = true;
-        e.preventDefault(); // stops arrow keys scrolling the page
-      });
-
-      window.addEventListener('keyup', e => {
-        keys[e.key] = false;
-      });
-
-      // ── UPDATE ───────────────────────────────────────────
-      // This runs every frame and moves the player
-      function update() {
-
-        // Work out which direction to move
-        let dx = 0, dy = 0;
-
-        if (keys['ArrowLeft']  || keys['a']) dx -= 1;
-        if (keys['ArrowRight'] || keys['d']) dx += 1;
-        if (keys['ArrowUp']    || keys['w']) dy -= 1;
-        if (keys['ArrowDown']  || keys['s']) dy += 1;
-
-        // Fix diagonal speed
-        if (dx !== 0 && dy !== 0) {
-          dx *= 0.707;
-          dy *= 0.707;
-        }
-
-        // Move the player, but stop them walking off the edge
-        player.x = Math.max(player.size, Math.min(canvas.width  - player.size, player.x + dx * player.speed));
-        player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y + dy * player.speed));
-
-      }
-
-      // ── DRAW ─────────────────────────────────────────────
-      // This runs every frame and paints the current state
-      function draw() {
-
-        // Clear the screen with the background colour
-        ctx.fillStyle = '#1a2e1a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Draw the player as a circle
-        ctx.fillStyle = player.color;
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
-        ctx.fill();
-
-      }
-
-      // ── GAME LOOP ────────────────────────────────────────
-      // Calls itself 60 times per second forever
-      function loop() {
-        update(); // 1. move things
-        draw();   // 2. paint things
-        requestAnimationFrame(loop); // 3. do it again
-      }
-
-      // Start the loop
-      loop();
-    </script>
-
+    <script src="game.js"></script>
   </body>
 </html>
