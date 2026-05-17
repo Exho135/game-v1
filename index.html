@@ -1,9 +1,51 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Game V1</title>
+    <title>My Game</title>
+    <style>
+      /* Remove default white border around the page */
+      * {
+        margin: 0;
+        padding: 0;
+      }
+
+      /* Make the page background black */
+      body {
+        background: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      /* The game screen */
+      canvas {
+        border: 2px solid #333;
+      }
+    </style>
   </head>
   <body>
-    <h1>Game V1 is coming soon</h1>
+
+    <!-- This is your game screen. Width and height are in pixels. -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+      // Get a reference to the canvas element
+      const canvas = document.getElementById('gameCanvas');
+
+      // Get the drawing tool - this is what lets us draw on the canvas
+      const ctx = canvas.getContext('2d');
+
+      // Fill the canvas with a dark green colour (like grass)
+      ctx.fillStyle = '#1a2e1a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw some white text in the middle
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '24px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Game V1', canvas.width / 2, canvas.height / 2);
+    </script>
+
   </body>
 </html>
