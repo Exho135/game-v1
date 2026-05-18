@@ -65,14 +65,14 @@ const furniture = [
 
 // ── ITEMS ─────────────────────────────────────────────────────────
 const items = [
-  { x: 120, y: 60,  name: 'fork',       color: '#aaaaaa', collected: false, room: 'kitchen'  },
-  { x: 200, y: 80,  name: 'mug',        color: '#c8603a', collected: false, room: 'kitchen'  },
-  { x: 150, y: 220, name: 'controller', color: '#222244', collected: false, room: 'living'   },
-  { x: 220, y: 280, name: 'blanket',    color: '#7a4a8a', collected: false, room: 'living'   },
-  { x: 120, y: 420, name: 'shoes',      color: '#8a6a3a', collected: false, room: 'bedroom'  },
-  { x: 220, y: 480, name: 'hoodie',     color: '#4a6a8a', collected: false, room: 'bedroom'  },
-  { x: 520, y: 220, name: 'toothpaste', color: '#3a8a6a', collected: false, room: 'bathroom' },
-  { x: 560, y: 280, name: 'towel',      color: '#d4a0a0', collected: false, room: 'bathroom' },
+  { x: 120, y: 60,  name: 'fork',       color: '#aaaaaa', collected: false, delivered: false, room: 'kitchen'  },
+  { x: 200, y: 80,  name: 'mug',        color: '#c8603a', collected: false, delivered: false, room: 'kitchen'  },
+  { x: 150, y: 220, name: 'controller', color: '#222244', collected: false, delivered: false, room: 'living'   },
+  { x: 220, y: 280, name: 'blanket',    color: '#7a4a8a', collected: false, delivered: false, room: 'living'   },
+  { x: 120, y: 420, name: 'shoes',      color: '#8a6a3a', collected: false, delivered: false, room: 'bedroom'  },
+  { x: 220, y: 480, name: 'hoodie',     color: '#4a6a8a', collected: false, delivered: false, room: 'bedroom'  },
+  { x: 520, y: 220, name: 'toothpaste', color: '#3a8a6a', collected: false, delivered: false, room: 'bathroom' },
+  { x: 560, y: 280, name: 'towel',      color: '#d4a0a0', collected: false, delivered: false, room: 'bathroom' },
 ];
 
 // ── CARRYING & COOLDOWN ───────────────────────────────────────────
@@ -140,9 +140,10 @@ function getAskInterval() {
 }
 let askTimer = 180; // first NPC asks after 3 seconds
 
-// Pick a random uncollected item for an NPC to ask about
 function pickRandomItem() {
-  const available = items.filter(i => !i.collected);
+  // Only pick items that haven't been delivered yet and aren't already being asked for
+  const beingAsked = npcs.map(n => n.asking ? n.asking.name : null);
+  const available = items.filter(i => !i.delivered && !beingAsked.includes(i.name));
   if (available.length === 0) return null;
   return available[Math.floor(Math.random() * available.length)];
 }
@@ -299,16 +300,20 @@ function update() {
         npc.y += Math.sin(angle) * 2;
       }
 
-      // Check if player is carrying the right item and is close to the NPC
+// Check if player is carrying the right item and is close to the NPC
       if (carrying && carrying.name === npc.asking.name && dist < 40) {
         // Delivered!
         score++;
+        carrying.delivered = true;  // mark as permanently gone
         carrying.collected = true;
         carrying = null;
         dropCooldown = 60;
         npc.state = 'satisfied';
         npc.frustratedTimer = 180;
         npc.asking = null;
+
+        // Check win condition — all 8 items delivered
+        if (items.every(i => i.delivered)) gameOver = true;
       }
     }
 
@@ -503,18 +508,37 @@ function drawHUD() {
 
 function drawGameOver() {
   if (!gameOver) return;
+  const won = items.every(i => i.delivered);
   ctx.fillStyle = 'rgba(0,0,0,0.75)';
   ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#e05050';
-  ctx.font = 'bold 36px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('GAME OVER', W / 2, H / 2 - 20);
+
+  if (won) {
+    ctx.fillStyle = '#50e080';
+    ctx.font = 'bold 36px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('YOU WIN! 🎉', W / 2, H / 2 - 20);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '16px monospace';
+    ctx.fillText('All items delivered!', W / 2, H / 2 + 20);
+  } else {
+    ctx.fillStyle = '#e05050';
+    ctx.font = 'bold 36px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAME OVER', W / 2, H / 2 - 20);
+  }
+
   ctx.fillStyle = '#ffffff';
   ctx.font = '16px monospace';
-  ctx.fillText('Score: ' + score, W / 2, H / 2 + 20);
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.font = '12px monospace';
-  ctx.fillText('Refresh to play again', W / 2, H / 2 + 50);
+  ctx.textAlign = 'center';
+  ctx.fillText('Score: ' + score, W / 2, H / 2 + 50);
+// Play Again button
+  ctx.fillStyle = '#5de0a0';
+  ctx.beginPath();
+  ctx.roundRect(W / 2 - 80, H / 2 + 90, 160, 36, 6);
+  ctx.fill();
+  ctx.fillStyle = '#000000';
+  ctx.font = 'bold 14px monospace';
+  ctx.fillText('PLAY AGAIN', W / 2, H / 2 + 114);
 }
 
 function drawPlayer() {
@@ -547,6 +571,48 @@ function loop() {
   update();
   draw();
   requestAnimationFrame(loop);
+}
+
+// ── PLAY AGAIN ───────────────────────────────────────────────────
+canvas.addEventListener('click', e => {
+  if (!gameOver) return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
+  // Check if click landed on the Play Again button
+  if (cx > W/2 - 80 && cx < W/2 + 80 && cy > H/2 + 90 && cy < H/2 + 126) {
+    resetGame();
+  }
+});
+
+function resetGame() {
+  // Reset all items
+  items.forEach(i => {
+    i.collected = false;
+    i.delivered = false;
+    i.x = i.x; // stays in place
+  });
+
+  // Reset all NPCs
+  npcs.forEach(n => {
+    n.state = 'idle';
+    n.asking = null;
+    n.timer = 0;
+    n.frustratedTimer = 0;
+  });
+
+  // Reset game state
+  frustrationCount = 0;
+  score = 0;
+  gameOver = false;
+  activeNPC = null;
+  askTimer = 180;
+  dropCooldown = 0;
+  carrying = null;
+
+  // Reset player position
+  player.x = 404;
+  player.y = 500;
 }
 
 loop();
