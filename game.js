@@ -33,10 +33,6 @@ function soundDelivery()    {
 function soundFrustration() { playSound(180, 'sawtooth', 0.3, 0.25); }
 
 // ── MUSIC ─────────────────────────────────────────────────────────
-// All music is generated using oscillators and scheduled notes
-// Title music: slow, moody, atmospheric
-// Game music: upbeat, pacman/hip hop feel
-
 function stopMusic() {
   if (currentMusic) {
     currentMusic.forEach(node => {
@@ -46,21 +42,63 @@ function stopMusic() {
   }
 }
 
+// Atmospheric music — for game over / win screens
+function playAtmoMusic() {
+  stopMusic();
+  if (muted) return;
+  const nodes = [];
+
+  const bassNotes = [57, 57, 52, 55, 57, 57, 52, 60];
+  const noteLen = 0.7;
+
+  function scheduleBass(startTime) {
+    bassNotes.forEach((note, i) => {
+      const freq = 440 * Math.pow(2, (note - 69) / 12);
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, startTime + i * noteLen);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + i * noteLen + noteLen * 0.95);
+      osc.start(startTime + i * noteLen);
+      osc.stop(startTime + i * noteLen + noteLen);
+      nodes.push(osc);
+
+      const pad = audioCtx.createOscillator();
+      const padGain = audioCtx.createGain();
+      pad.connect(padGain);
+      padGain.connect(audioCtx.destination);
+      pad.type = 'sine';
+      pad.frequency.value = freq * 1.5;
+      padGain.gain.setValueAtTime(0.05, startTime + i * noteLen);
+      padGain.gain.exponentialRampToValueAtTime(0.001, startTime + i * noteLen + noteLen);
+      pad.start(startTime + i * noteLen);
+      pad.stop(startTime + i * noteLen + noteLen);
+      nodes.push(pad);
+    });
+  }
+
+  const loopLen = bassNotes.length * noteLen;
+  for (let i = 0; i < 24; i++) {
+    scheduleBass(audioCtx.currentTime + i * loopLen);
+  }
+  currentMusic = nodes;
+}
+
 function playGameMusic() {
   stopMusic();
   if (muted) return;
   const nodes = [];
 
-  // Everything locked to the same 8 second loop
-  // 4 beats per bar, 4 bars = 16 beats total
-  // Tempo: 120bpm = 0.5s per beat
   const BPM = 120;
-  const BEAT = 60 / BPM;        // 0.5s per beat
-  const BAR = BEAT * 4;         // 2s per bar
-  const LOOP = BAR * 4;         // 8s per loop — 4 bars
+  const BEAT = 60 / BPM;
+  const BAR = BEAT * 4;
+  const LOOP = BAR * 4;
 
   function scheduleMelody(startTime) {
-    // 16 notes across 4 bars — each note is one half beat (0.25s)
     const melody = [
       69, 71, 72, 71,   69, 67, 69, 72,
       71, 69, 67, 69,   71, 72, 74, 72,
@@ -82,7 +120,6 @@ function playGameMusic() {
       osc.stop(t + dur);
       nodes.push(osc);
 
-      // Soft octave harmony
       const harm = audioCtx.createOscillator();
       const harmGain = audioCtx.createGain();
       harm.connect(harmGain);
@@ -98,13 +135,11 @@ function playGameMusic() {
   }
 
   function scheduleAtmoBass(startTime) {
-    // 4 bass notes — one per bar, each lasts one full bar
     const bassNotes = [57, 52, 55, 57];
     bassNotes.forEach((note, i) => {
       const freq = 440 * Math.pow(2, (note - 69) / 12);
       const t = startTime + i * BAR;
 
-      // Deep sine bass
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -117,7 +152,6 @@ function playGameMusic() {
       osc.stop(t + BAR);
       nodes.push(osc);
 
-      // Atmospheric pad — one fifth above
       const pad = audioCtx.createOscillator();
       const padGain = audioCtx.createGain();
       pad.connect(padGain);
@@ -133,11 +167,10 @@ function playGameMusic() {
   }
 
   function schedulePerc(startTime) {
-    // 16 beats across the loop — kick on 1 and 3 of each bar
     for (let i = 0; i < 16; i++) {
       const t = startTime + i * BEAT;
-      const isKick = i % 4 === 0 || i % 4 === 2; // beats 1 and 3
-      const isSnare = i % 4 === 1 || i % 4 === 3; // beats 2 and 4
+      const isKick  = i % 4 === 0 || i % 4 === 2;
+      const isSnare = i % 4 === 1 || i % 4 === 3;
 
       const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
       const data = buf.getChannelData(0);
@@ -153,7 +186,6 @@ function playGameMusic() {
       src.start(t);
       nodes.push(src);
 
-      // Hi hat on every half beat
       const hatBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
       const hatData = hatBuf.getChannelData(0);
       for (let j = 0; j < hatData.length; j++) {
@@ -170,7 +202,6 @@ function playGameMusic() {
     }
   }
 
-  // Schedule 16 loops
   for (let loop = 0; loop < 16; loop++) {
     const start = audioCtx.currentTime + loop * LOOP;
     scheduleMelody(start);
@@ -272,10 +303,10 @@ const ASK_TIME = 600;
 
 // ── NPCS ──────────────────────────────────────────────────────────
 const npcDefs = [
-  { name: 'Amee G', x: 345, y: 250, color: '#e8a0c0' },
-  { name: 'Mary',   x: 345, y: 490, color: '#a0c0e8' },
-  { name: 'E',      x: 390, y: 143, color: '#a0e8b0' },
-  { name: 'H',      x: 463, y: 250, color: '#e8d0a0' },
+  { name: 'Roze', x: 345, y: 250, color: '#e8a0c0' },
+  { name: 'Mary', x: 345, y: 490, color: '#a0c0e8' },
+  { name: 'Mo',   x: 390, y: 143, color: '#a0e8b0' },
+  { name: 'H',    x: 463, y: 250, color: '#e8d0a0' },
 ];
 
 let npcs = [];
@@ -434,7 +465,7 @@ function update() {
         frustrationCount++;
         soundFrustration();
         keys['n'] = false; keys['N'] = false;
-        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; stopMusic(); }
+        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; playAtmoMusic(); }
       }
       if (npc.timer <= 0) {
         npc.state = 'frustrated';
@@ -442,7 +473,7 @@ function update() {
         npc.asking = null;
         frustrationCount++;
         soundFrustration();
-        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; stopMusic(); }
+        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; playAtmoMusic(); }
       }
     }
 
@@ -463,7 +494,7 @@ function update() {
         npc.frustratedTimer = 180;
         npc.asking = null;
         soundDelivery();
-        if (items.every(i => i.delivered)) { gameOver = true; gameState = 'gameover'; stopMusic(); }
+        if (items.every(i => i.delivered)) { gameOver = true; gameState = 'gameover'; playAtmoMusic(); }
       }
     }
 
@@ -648,7 +679,7 @@ function drawHUD() {
   ctx.font = '12px monospace';
   ctx.fillText('😤 ' + frustrationCount + ' / 3  strikes', 20, 100);
 
-  // Mute button — bottom right corner
+  // Mute button
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
   ctx.roundRect(W - 70, H - 36, 60, 26, 4);
@@ -728,7 +759,6 @@ function drawTitleScreen() {
   ctx.font = 'bold 18px monospace';
   ctx.fillText('START', W / 2, H / 2 + 116);
 
-  // Mute button on title screen too
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
   ctx.roundRect(W - 70, H - 36, 60, 26, 4);
@@ -773,6 +803,16 @@ function drawGameOverScreen() {
   ctx.fillStyle = '#000000';
   ctx.font = 'bold 16px monospace';
   ctx.fillText('PLAY AGAIN', W / 2, H / 2 + 87);
+
+  // Mute button on game over screen
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(W - 70, H - 36, 60, 26, 4);
+  ctx.fill();
+  ctx.fillStyle = muted ? '#e05050' : '#5de0a0';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(muted ? 'MUTE' : 'SOUND', W - 40, H - 18);
 }
 
 function drawPlayer() {
@@ -808,6 +848,7 @@ function draw() {
 
   if (gameState === 'gameover') drawGameOverScreen();
 }
+
 // ── CLICK HANDLER ─────────────────────────────────────────────────
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
@@ -821,6 +862,7 @@ canvas.addEventListener('click', e => {
       stopMusic();
     } else {
       if (gameState === 'playing') playGameMusic();
+      if (gameState === 'gameover') playAtmoMusic();
     }
     return;
   }
@@ -846,12 +888,5 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-
-// Start title music when page loads
-window.addEventListener('click', function startAudio() {
-  audioCtx.resume();
-  playTitleMusic();
-  window.removeEventListener('click', startAudio);
-}, { once: true });
 
 loop();
