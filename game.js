@@ -5,10 +5,12 @@ const W = canvas.width;
 const H = canvas.height;
 
 // ── AUDIO ─────────────────────────────────────────────────────────
-// We use the Web Audio API to generate sounds in code — no files needed
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let muted = false;
+let currentMusic = null;
 
 function playSound(freq, type, duration, vol = 0.3) {
+  if (muted) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.connect(gain);
@@ -22,13 +24,162 @@ function playSound(freq, type, duration, vol = 0.3) {
   osc.stop(audioCtx.currentTime + duration);
 }
 
-function soundPickup()      { playSound(520, 'sine',   0.12, 0.2); }
+function soundPickup()      { playSound(520, 'sine', 0.12, 0.2); }
 function soundDelivery()    {
   playSound(520, 'sine', 0.1, 0.2);
   setTimeout(() => playSound(660, 'sine', 0.1, 0.2), 100);
   setTimeout(() => playSound(780, 'sine', 0.2, 0.2), 200);
 }
 function soundFrustration() { playSound(180, 'sawtooth', 0.3, 0.25); }
+
+// ── MUSIC ─────────────────────────────────────────────────────────
+// All music is generated using oscillators and scheduled notes
+// Title music: slow, moody, atmospheric
+// Game music: upbeat, pacman/hip hop feel
+
+function stopMusic() {
+  if (currentMusic) {
+    currentMusic.forEach(node => {
+      try { node.stop(); } catch(e) {}
+    });
+    currentMusic = null;
+  }
+}
+
+function playGameMusic() {
+  stopMusic();
+  if (muted) return;
+  const nodes = [];
+
+  // Everything locked to the same 8 second loop
+  // 4 beats per bar, 4 bars = 16 beats total
+  // Tempo: 120bpm = 0.5s per beat
+  const BPM = 120;
+  const BEAT = 60 / BPM;        // 0.5s per beat
+  const BAR = BEAT * 4;         // 2s per bar
+  const LOOP = BAR * 4;         // 8s per loop — 4 bars
+
+  function scheduleMelody(startTime) {
+    // 16 notes across 4 bars — each note is one half beat (0.25s)
+    const melody = [
+      69, 71, 72, 71,   69, 67, 69, 72,
+      71, 69, 67, 69,   71, 72, 74, 72,
+    ];
+    melody.forEach((note, i) => {
+      const freq = 440 * Math.pow(2, (note - 69) / 12);
+      const t = startTime + i * BEAT * 0.5;
+      const dur = BEAT * 0.45;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.07, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t);
+      osc.stop(t + dur);
+      nodes.push(osc);
+
+      // Soft octave harmony
+      const harm = audioCtx.createOscillator();
+      const harmGain = audioCtx.createGain();
+      harm.connect(harmGain);
+      harmGain.connect(audioCtx.destination);
+      harm.type = 'sine';
+      harm.frequency.value = freq * 0.5;
+      harmGain.gain.setValueAtTime(0.03, t);
+      harmGain.gain.exponentialRampToValueAtTime(0.001, t + BEAT * 0.5);
+      harm.start(t);
+      harm.stop(t + BEAT * 0.5);
+      nodes.push(harm);
+    });
+  }
+
+  function scheduleAtmoBass(startTime) {
+    // 4 bass notes — one per bar, each lasts one full bar
+    const bassNotes = [57, 52, 55, 57];
+    bassNotes.forEach((note, i) => {
+      const freq = 440 * Math.pow(2, (note - 69) / 12);
+      const t = startTime + i * BAR;
+
+      // Deep sine bass
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + BAR * 0.95);
+      osc.start(t);
+      osc.stop(t + BAR);
+      nodes.push(osc);
+
+      // Atmospheric pad — one fifth above
+      const pad = audioCtx.createOscillator();
+      const padGain = audioCtx.createGain();
+      pad.connect(padGain);
+      padGain.connect(audioCtx.destination);
+      pad.type = 'sine';
+      pad.frequency.value = freq * 1.5;
+      padGain.gain.setValueAtTime(0.04, t);
+      padGain.gain.exponentialRampToValueAtTime(0.001, t + BAR);
+      pad.start(t);
+      pad.stop(t + BAR);
+      nodes.push(pad);
+    });
+  }
+
+  function schedulePerc(startTime) {
+    // 16 beats across the loop — kick on 1 and 3 of each bar
+    for (let i = 0; i < 16; i++) {
+      const t = startTime + i * BEAT;
+      const isKick = i % 4 === 0 || i % 4 === 2; // beats 1 and 3
+      const isSnare = i % 4 === 1 || i % 4 === 3; // beats 2 and 4
+
+      const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let j = 0; j < data.length; j++) {
+        data[j] = (Math.random() * 2 - 1) * (1 - j / data.length);
+      }
+      const src = audioCtx.createBufferSource();
+      const gain = audioCtx.createGain();
+      src.buffer = buf;
+      src.connect(gain);
+      gain.connect(audioCtx.destination);
+      gain.gain.value = isKick ? 0.09 : isSnare ? 0.05 : 0.02;
+      src.start(t);
+      nodes.push(src);
+
+      // Hi hat on every half beat
+      const hatBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
+      const hatData = hatBuf.getChannelData(0);
+      for (let j = 0; j < hatData.length; j++) {
+        hatData[j] = (Math.random() * 2 - 1) * (1 - j / hatData.length);
+      }
+      const hat = audioCtx.createBufferSource();
+      const hatGain = audioCtx.createGain();
+      hat.buffer = hatBuf;
+      hat.connect(hatGain);
+      hatGain.connect(audioCtx.destination);
+      hatGain.gain.value = 0.015;
+      hat.start(t + BEAT * 0.5);
+      nodes.push(hat);
+    }
+  }
+
+  // Schedule 16 loops
+  for (let loop = 0; loop < 16; loop++) {
+    const start = audioCtx.currentTime + loop * LOOP;
+    scheduleMelody(start);
+    scheduleAtmoBass(start);
+    schedulePerc(start);
+  }
+
+  currentMusic = nodes;
+}
 
 // ── HOUSE FLOOR ──────────────────────────────────────────────────
 const house = { x: 60, y: 20, w: 580, h: 560 };
@@ -104,7 +255,6 @@ const itemDefs = [
 let items = [];
 
 // ── TRAIL ─────────────────────────────────────────────────────────
-// Stores recent player positions for the movement trail
 const trail = [];
 const TRAIL_LENGTH = 18;
 
@@ -117,16 +267,14 @@ let gameOver = false;
 let activeNPC = null;
 let askTimer = 180;
 let frame = 0;
-// 'title' | 'playing' | 'gameover'
 let gameState = 'title';
-
 const ASK_TIME = 600;
 
 // ── NPCS ──────────────────────────────────────────────────────────
 const npcDefs = [
-  { name: 'Roze', x: 345, y: 250, color: '#e8a0c0' },
+  { name: 'Amee G', x: 345, y: 250, color: '#e8a0c0' },
   { name: 'Mary',   x: 345, y: 490, color: '#a0c0e8' },
-  { name: 'Mo',      x: 390, y: 143, color: '#a0e8b0' },
+  { name: 'E',      x: 390, y: 143, color: '#a0e8b0' },
   { name: 'H',      x: 463, y: 250, color: '#e8d0a0' },
 ];
 
@@ -190,12 +338,12 @@ function resetGame() {
   player.x = 404;
   player.y = 500;
   gameState = 'playing';
+  playGameMusic();
 }
 
 // ── UPDATE ───────────────────────────────────────────────────────
 function update() {
   frame++;
-
   if (gameState === 'title' || gameState === 'gameover') return;
 
   let dx = 0, dy = 0;
@@ -212,14 +360,13 @@ function update() {
   if (insideHouse(nx, player.y, R) && !hitsWall(nx, player.y, R) && !hitsFurniture(nx, player.y, R)) player.x = nx;
   if (insideHouse(player.x, ny, R) && !hitsWall(player.x, ny, R) && !hitsFurniture(player.x, ny, R)) player.y = ny;
 
-  // ── TRAIL ───────────────────────────────────────────────────
+  // Trail
   if (dx !== 0 || dy !== 0) {
     trail.push({ x: player.x, y: player.y });
     if (trail.length > TRAIL_LENGTH) trail.shift();
   }
 
-  // ── DROP ────────────────────────────────────────────────────
-// ── DROP ────────────────────────────────────────────────────
+  // Drop
   if ((keys['e'] || keys['E']) && dropCooldown === 0 && carrying !== null) {
     carrying.x = player.x;
     carrying.y = player.y;
@@ -229,19 +376,17 @@ function update() {
   }
   if (dropCooldown > 0) dropCooldown--;
 
-  // ── RELEASE FOLLOWING NPC ────────────────────────────────────
-  // Press R to release whoever is following you
-  // They go back to asking with a fresh timer so you can still help them
+  // Release following NPC
   if (keys['r'] || keys['R']) {
     const following = npcs.find(n => n.state === 'following');
     if (following) {
       following.state = 'asking';
-      following.timer = ASK_TIME;  // fresh timer
+      following.timer = ASK_TIME;
       keys['r'] = false; keys['R'] = false;
     }
   }
 
-  // ── PICKUP ──────────────────────────────────────────────────
+  // Pickup
   if (carrying === null && dropCooldown === 0) {
     for (const item of items) {
       if (item.collected || item.delivered) continue;
@@ -254,7 +399,7 @@ function update() {
     }
   }
 
-  // ── NPC SPAWNING ────────────────────────────────────────────
+  // NPC spawning
   askTimer--;
   if (askTimer <= 0) {
     const idleNPCs = npcs.filter(n => n.state === 'idle');
@@ -270,7 +415,7 @@ function update() {
     askTimer = getAskInterval();
   }
 
-  // ── NPC LOGIC ───────────────────────────────────────────────
+  // NPC logic
   activeNPC = null;
   for (const npc of npcs) {
     if (npc.state === 'asking') {
@@ -289,7 +434,7 @@ function update() {
         frustrationCount++;
         soundFrustration();
         keys['n'] = false; keys['N'] = false;
-        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; }
+        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; stopMusic(); }
       }
       if (npc.timer <= 0) {
         npc.state = 'frustrated';
@@ -297,7 +442,7 @@ function update() {
         npc.asking = null;
         frustrationCount++;
         soundFrustration();
-        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; }
+        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; stopMusic(); }
       }
     }
 
@@ -318,7 +463,7 @@ function update() {
         npc.frustratedTimer = 180;
         npc.asking = null;
         soundDelivery();
-        if (items.every(i => i.delivered)) { gameOver = true; gameState = 'gameover'; }
+        if (items.every(i => i.delivered)) { gameOver = true; gameState = 'gameover'; stopMusic(); }
       }
     }
 
@@ -329,7 +474,7 @@ function update() {
   }
 }
 
-// ── DRAW HELPERS ──────────────────────────────────────────────────
+// ── DRAW ─────────────────────────────────────────────────────────
 function drawHouse() {
   ctx.fillStyle = '#c8b89a';
   ctx.fillRect(house.x, house.y, house.w, house.h);
@@ -384,7 +529,6 @@ function drawTrail() {
 function drawItems() {
   for (const item of items) {
     if (item.collected || item.delivered) continue;
-    // Pulsing glow
     const pulse = 1 + 0.2 * Math.sin(frame * 0.08 + item.x);
     ctx.fillStyle = `rgba(255,255,255,${0.08 * pulse})`;
     ctx.beginPath();
@@ -404,10 +548,7 @@ function drawItems() {
 function drawNPCs() {
   for (const npc of npcs) {
     if (npc.state === 'idle') continue;
-
-    // Gentle bob animation
     const bob = Math.sin(frame * 0.08 + npc.x) * 2;
-
     let bodyColor = npc.color;
     if (npc.state === 'frustrated') bodyColor = '#e04040';
     if (npc.state === 'satisfied')  bodyColor = '#40e080';
@@ -480,7 +621,7 @@ function drawNPCs() {
 }
 
 function drawHUD() {
-  // Carrying indicator
+  // Carrying
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 10, 220, 30);
   ctx.font = '12px monospace';
@@ -500,26 +641,34 @@ function drawHUD() {
   ctx.font = '12px monospace';
   ctx.fillText('Score: ' + score, 20, 66);
 
-  // Frustration count — emojis intact
+  // Strikes
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 82, 160, 26);
   ctx.fillStyle = frustrationCount >= 2 ? '#e05050' : '#ffffff';
   ctx.font = '12px monospace';
   ctx.fillText('😤 ' + frustrationCount + ' / 3  strikes', 20, 100);
 
-  // ── FOLLOWING INDICATOR ───────────────────────────────────────
+  // Mute button — bottom right corner
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(W - 70, H - 36, 60, 26, 4);
+  ctx.fill();
+  ctx.fillStyle = muted ? '#e05050' : '#5de0a0';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(muted ? 'MUTE' : 'SOUND', W - 40, H - 18);
+
+  // Following indicator
   const following = npcs.find(n => n.state === 'following');
   if (following) {
     const bw = 160, bh = 56;
     const bx = W - bw - 10, by = 10;
 
-    // Background
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.beginPath();
     ctx.roundRect(bx, by, bw, bh, 6);
     ctx.fill();
 
-    // Pulsing border
     const pulse = 0.5 + 0.5 * Math.sin(frame * 0.1);
     ctx.strokeStyle = `rgba(93,224,160,${pulse})`;
     ctx.lineWidth = 2;
@@ -527,18 +676,15 @@ function drawHUD() {
     ctx.roundRect(bx, by, bw, bh, 6);
     ctx.stroke();
 
-    // Line 1 — who is following
     ctx.fillStyle = following.color;
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'left';
     ctx.fillText(following.name + ' following', bx + 10, by + 18);
 
-    // Line 2 — what they need
     ctx.fillStyle = '#ffe066';
     ctx.font = '11px monospace';
     ctx.fillText('Needs: ' + following.asking.name, bx + 10, by + 34);
 
-    // Line 3 — release instruction
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = '10px monospace';
     ctx.fillText('[R] to release', bx + 10, by + 50);
@@ -546,11 +692,9 @@ function drawHUD() {
 }
 
 function drawTitleScreen() {
-  // Background
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, W, H);
 
-  // Animated background dots
   for (let i = 0; i < 20; i++) {
     const x = (i * 137 + frame * 0.3) % W;
     const y = (i * 97 + frame * 0.2) % H;
@@ -560,7 +704,6 @@ function drawTitleScreen() {
     ctx.fill();
   }
 
-  // Title
   ctx.fillStyle = '#ffe066';
   ctx.font = 'bold 64px monospace';
   ctx.textAlign = 'center';
@@ -568,18 +711,15 @@ function drawTitleScreen() {
   ctx.fillStyle = '#5de0a0';
   ctx.fillText('CHOP CHOP', W / 2, H / 2 - 54);
 
-  // Subtitle
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.font = '14px monospace';
   ctx.fillText('Find what your housemates need.', W / 2, H / 2 + 10);
   ctx.fillText('Before they lose their patience.', W / 2, H / 2 + 30);
 
-  // Controls
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.font = '12px monospace';
   ctx.fillText('WASD/Arrows: move  |  E: drop  |  H: Here  |  N: IDK', W / 2, H / 2 + 65);
 
-  // Start button
   ctx.fillStyle = '#5de0a0';
   ctx.beginPath();
   ctx.roundRect(W / 2 - 100, H / 2 + 88, 200, 44, 8);
@@ -587,6 +727,16 @@ function drawTitleScreen() {
   ctx.fillStyle = '#000000';
   ctx.font = 'bold 18px monospace';
   ctx.fillText('START', W / 2, H / 2 + 116);
+
+  // Mute button on title screen too
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(W - 70, H - 36, 60, 26, 4);
+  ctx.fill();
+  ctx.fillStyle = muted ? '#e05050' : '#5de0a0';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(muted ? 'MUTE' : 'SOUND', W - 40, H - 18);
 }
 
 function drawGameOverScreen() {
@@ -598,7 +748,7 @@ function drawGameOverScreen() {
     ctx.fillStyle = '#50e080';
     ctx.font = 'bold 40px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('YOU WIN! ', W / 2, H / 2 - 40);
+    ctx.fillText('YOU WIN! 🎉', W / 2, H / 2 - 40);
     ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.font = '16px monospace';
     ctx.fillText('All items delivered!', W / 2, H / 2);
@@ -616,7 +766,6 @@ function drawGameOverScreen() {
   ctx.font = 'bold 18px monospace';
   ctx.fillText('Score: ' + score, W / 2, H / 2 + 36);
 
-  // Play Again button
   ctx.fillStyle = '#5de0a0';
   ctx.beginPath();
   ctx.roundRect(W / 2 - 100, H / 2 + 60, 200, 44, 8);
@@ -659,23 +808,32 @@ function draw() {
 
   if (gameState === 'gameover') drawGameOverScreen();
 }
-
 // ── CLICK HANDLER ─────────────────────────────────────────────────
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
 
+  // Mute button — works on all screens
+  if (cx > W - 70 && cx < W - 10 && cy > H - 36 && cy < H - 10) {
+    muted = !muted;
+    if (muted) {
+      stopMusic();
+    } else {
+      if (gameState === 'playing') playGameMusic();
+    }
+    return;
+  }
+
   if (gameState === 'title') {
-    // Start button
     if (cx > W/2 - 100 && cx < W/2 + 100 && cy > H/2 + 88 && cy < H/2 + 132) {
-      audioCtx.resume();
-      resetGame();
+      audioCtx.resume().then(() => {
+        resetGame();
+      });
     }
   }
 
   if (gameState === 'gameover') {
-    // Play Again button
     if (cx > W/2 - 100 && cx < W/2 + 100 && cy > H/2 + 60 && cy < H/2 + 104) {
       resetGame();
     }
@@ -688,5 +846,12 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
+
+// Start title music when page loads
+window.addEventListener('click', function startAudio() {
+  audioCtx.resume();
+  playTitleMusic();
+  window.removeEventListener('click', startAudio);
+}, { once: true });
 
 loop();
