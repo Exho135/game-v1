@@ -219,6 +219,7 @@ function update() {
   }
 
   // ── DROP ────────────────────────────────────────────────────
+// ── DROP ────────────────────────────────────────────────────
   if ((keys['e'] || keys['E']) && dropCooldown === 0 && carrying !== null) {
     carrying.x = player.x;
     carrying.y = player.y;
@@ -227,6 +228,18 @@ function update() {
     dropCooldown = 60;
   }
   if (dropCooldown > 0) dropCooldown--;
+
+  // ── RELEASE FOLLOWING NPC ────────────────────────────────────
+  // Press R to release whoever is following you
+  // They go back to asking with a fresh timer so you can still help them
+  if (keys['r'] || keys['R']) {
+    const following = npcs.find(n => n.state === 'following');
+    if (following) {
+      following.state = 'asking';
+      following.timer = ASK_TIME;  // fresh timer
+      keys['r'] = false; keys['R'] = false;
+    }
+  }
 
   // ── PICKUP ──────────────────────────────────────────────────
   if (carrying === null && dropCooldown === 0) {
@@ -467,6 +480,7 @@ function drawNPCs() {
 }
 
 function drawHUD() {
+  // Carrying indicator
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 10, 220, 30);
   ctx.font = '12px monospace';
@@ -478,16 +492,57 @@ function drawHUD() {
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.fillText('Carrying: nothing', 20, 30);
   }
+
+  // Score
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 48, 120, 26);
   ctx.fillStyle = '#ffe066';
   ctx.font = '12px monospace';
   ctx.fillText('Score: ' + score, 20, 66);
+
+  // Frustration count — emojis intact
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 82, 160, 26);
   ctx.fillStyle = frustrationCount >= 2 ? '#e05050' : '#ffffff';
   ctx.font = '12px monospace';
   ctx.fillText('😤 ' + frustrationCount + ' / 3  strikes', 20, 100);
+
+  // ── FOLLOWING INDICATOR ───────────────────────────────────────
+  const following = npcs.find(n => n.state === 'following');
+  if (following) {
+    const bw = 160, bh = 56;
+    const bx = W - bw - 10, by = 10;
+
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 6);
+    ctx.fill();
+
+    // Pulsing border
+    const pulse = 0.5 + 0.5 * Math.sin(frame * 0.1);
+    ctx.strokeStyle = `rgba(93,224,160,${pulse})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, 6);
+    ctx.stroke();
+
+    // Line 1 — who is following
+    ctx.fillStyle = following.color;
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(following.name + ' following', bx + 10, by + 18);
+
+    // Line 2 — what they need
+    ctx.fillStyle = '#ffe066';
+    ctx.font = '11px monospace';
+    ctx.fillText('Needs: ' + following.asking.name, bx + 10, by + 34);
+
+    // Line 3 — release instruction
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '10px monospace';
+    ctx.fillText('[R] to release', bx + 10, by + 50);
+  }
 }
 
 function drawTitleScreen() {
