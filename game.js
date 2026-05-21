@@ -124,9 +124,9 @@ const ASK_TIME = 600;
 
 // ── NPCS ──────────────────────────────────────────────────────────
 const npcDefs = [
-  { name: 'Amee G', x: 345, y: 250, color: '#e8a0c0' },
+  { name: 'Roze', x: 345, y: 250, color: '#e8a0c0' },
   { name: 'Mary',   x: 345, y: 490, color: '#a0c0e8' },
-  { name: 'E',      x: 390, y: 143, color: '#a0e8b0' },
+  { name: 'Mo',      x: 390, y: 143, color: '#a0e8b0' },
   { name: 'H',      x: 463, y: 250, color: '#e8d0a0' },
 ];
 
