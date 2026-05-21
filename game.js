@@ -211,6 +211,26 @@ const W_T = 6;
 const playerImg = new Image();
 playerImg.src = 'player.png';
 
+// ── ITEM SPRITES ──────────────────────────────────────────────────
+const itemImgs = {
+  'fork':       new Image(),
+  'mug':        new Image(),
+  'controller': new Image(),
+  'blanket':    new Image(),
+  'shoes':      new Image(),
+  'hoodie':     new Image(),
+  'toothpaste': new Image(),
+  'towel':      new Image(),
+};
+itemImgs['fork'].src       = 'item_fork.png';
+itemImgs['mug'].src        = 'item_mug.png';
+itemImgs['controller'].src = 'item_controller.png';
+itemImgs['blanket'].src    = 'item_blanket.png';
+itemImgs['shoes'].src      = 'item_shoes.png';
+itemImgs['hoodie'].src     = 'item_hoodie.png';
+itemImgs['toothpaste'].src = 'item_toothpaste.png';
+itemImgs['towel'].src      = 'item_towel.png';
+
 const npcImgs = {
   'Roze': new Image(),
   'Mary': new Image(),
@@ -284,7 +304,7 @@ const furniture = [
 
 // ── ITEMS ─────────────────────────────────────────────────────────
 const itemDefs = [
-  { x: 120, y: 60,  name: 'fork',       color: '#aaaaaa', room: 'kitchen'  },
+  { x: 280, y: 90,  name: 'fork',       color: '#aaaaaa', room: 'kitchen'  },
   { x: 200, y: 80,  name: 'mug',        color: '#c8603a', room: 'kitchen'  },
   { x: 150, y: 220, name: 'controller', color: '#222244', room: 'living'   },
   { x: 220, y: 280, name: 'blanket',    color: '#7a4a8a', room: 'living'   },
@@ -591,20 +611,35 @@ function drawItems() {
   for (const item of items) {
     if (item.collected || item.delivered) continue;
     const pulse = 1 + 0.2 * Math.sin(frame * 0.08 + item.x);
+
+    // Glow
     ctx.fillStyle = `rgba(255,255,255,${0.08 * pulse})`;
     ctx.beginPath();
     ctx.arc(item.x, item.y, 14 * pulse, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = item.color;
-    ctx.beginPath();
-    ctx.arc(item.x, item.y, 7, 0, Math.PI * 2);
-    ctx.fill();
+
+    const img = itemImgs[item.name];
+    if (img && img.complete) {
+      // Draw sprite centred on item position
+      const drawW = FRAME_W * SPRITE_SCALE;
+      const drawH = FRAME_H * SPRITE_SCALE;
+      ctx.drawImage(img, 0, 0, FRAME_W, FRAME_H, item.x - drawW / 2, item.y - drawH / 2, drawW, drawH);
+    } else {
+      // Fallback coloured dot
+      ctx.fillStyle = item.color;
+      ctx.beginPath();
+      ctx.arc(item.x, item.y, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Label
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.font = '9px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(item.name, item.x, item.y - 14);
   }
 }
+
 
 function drawNPCs() {
   for (const npc of npcs) {
