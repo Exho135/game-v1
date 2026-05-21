@@ -227,6 +227,22 @@ const roomFloors = [
 // ── WALL THICKNESS ────────────────────────────────────────────────
 const W_T = 6;
 
+// ── SPRITES ───────────────────────────────────────────────────────
+const playerImg = new Image();
+playerImg.src = 'player.png';
+
+// Sprite sheet layout — 8 frames in one row
+// Order: down-left, down-right, up-left, up-right, left-left, left-right, right-left, right-right
+const FRAME_W = 16;  // width of each frame
+const FRAME_H = 16;  // height of each frame
+const SPRITE_SCALE = 2;  // draw at 2x size so it's visible
+
+// Animation state
+let playerFrame = 0;       // which frame to show (0-7)
+let playerDir = 0;         // 0=down, 1=up, 2=left, 3=right
+let animTimer = 0;         // counts up to swap walk frames
+const ANIM_SPEED = 12;     // frames between each step
+
 // ── WALLS ────────────────────────────────────────────────────────
 const walls = [
   { x: 60,  y: 20,  w: 580, h: W_T },
@@ -816,14 +832,57 @@ function drawGameOverScreen() {
 }
 
 function drawPlayer() {
-  ctx.fillStyle = 'rgba(93,224,160,0.15)';
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = player.color;
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
-  ctx.fill();
+  // Work out which direction the player is facing
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft']  || keys['a']) dx = -1;
+  if (keys['ArrowRight'] || keys['d']) dx = 1;
+  if (keys['ArrowUp']    || keys['w']) dy = -1;
+  if (keys['ArrowDown']  || keys['s']) dy = 1;
+
+  // Set direction based on key input
+  if      (dy > 0) playerDir = 0;  // down
+  else if (dy < 0) playerDir = 1;  // up
+  else if (dx < 0) playerDir = 2;  // left
+  else if (dx > 0) playerDir = 3;  // right
+
+  // Animate walk frames when moving
+  const moving = dx !== 0 || dy !== 0;
+  if (moving) {
+    animTimer++;
+    if (animTimer >= ANIM_SPEED) {
+      animTimer = 0;
+      playerFrame = playerFrame === 0 ? 1 : 0; // toggle between frame 0 and 1
+    }
+  } else {
+    playerFrame = 0; // stand still on first frame when not moving
+    animTimer = 0;
+  }
+
+  // Which frame in the sheet to show
+  // Each direction has 2 frames: direction * 2 + walkFrame
+  const frameIndex = playerDir * 2 + playerFrame;
+  const srcX = frameIndex * FRAME_W;
+
+  // Draw sprite centred on player position
+  const drawW = FRAME_W * SPRITE_SCALE;
+  const drawH = FRAME_H * SPRITE_SCALE;
+
+  if (playerImg.complete) {
+    ctx.drawImage(
+      playerImg,
+      srcX, 0,           // source position in sprite sheet
+      FRAME_W, FRAME_H,  // source size
+      player.x - drawW / 2,  // screen x
+      player.y - drawH / 2,  // screen y
+      drawW, drawH            // drawn size
+    );
+  } else {
+    // Fallback circle while image loads
+    ctx.fillStyle = player.color;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 // ── DRAW ─────────────────────────────────────────────────────────
