@@ -42,19 +42,15 @@ function stopMusic() {
   }
 }
 
-// Atmospheric music — for game over / win screens
 function playAtmoMusic() {
   stopMusic();
   if (muted) return;
   const nodes = [];
-
   const bassNotes = [57, 57, 52, 55, 57, 57, 52, 60];
   const noteLen = 0.7;
-
   function scheduleBass(startTime) {
     bassNotes.forEach((note, i) => {
       const freq = 440 * Math.pow(2, (note - 69) / 12);
-
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -66,7 +62,6 @@ function playAtmoMusic() {
       osc.start(startTime + i * noteLen);
       osc.stop(startTime + i * noteLen + noteLen);
       nodes.push(osc);
-
       const pad = audioCtx.createOscillator();
       const padGain = audioCtx.createGain();
       pad.connect(padGain);
@@ -80,11 +75,8 @@ function playAtmoMusic() {
       nodes.push(pad);
     });
   }
-
   const loopLen = bassNotes.length * noteLen;
-  for (let i = 0; i < 24; i++) {
-    scheduleBass(audioCtx.currentTime + i * loopLen);
-  }
+  for (let i = 0; i < 24; i++) scheduleBass(audioCtx.currentTime + i * loopLen);
   currentMusic = nodes;
 }
 
@@ -92,7 +84,6 @@ function playGameMusic() {
   stopMusic();
   if (muted) return;
   const nodes = [];
-
   const BPM = 120;
   const BEAT = 60 / BPM;
   const BAR = BEAT * 4;
@@ -107,7 +98,6 @@ function playGameMusic() {
       const freq = 440 * Math.pow(2, (note - 69) / 12);
       const t = startTime + i * BEAT * 0.5;
       const dur = BEAT * 0.45;
-
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -119,7 +109,6 @@ function playGameMusic() {
       osc.start(t);
       osc.stop(t + dur);
       nodes.push(osc);
-
       const harm = audioCtx.createOscillator();
       const harmGain = audioCtx.createGain();
       harm.connect(harmGain);
@@ -139,7 +128,6 @@ function playGameMusic() {
     bassNotes.forEach((note, i) => {
       const freq = 440 * Math.pow(2, (note - 69) / 12);
       const t = startTime + i * BAR;
-
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
@@ -151,7 +139,6 @@ function playGameMusic() {
       osc.start(t);
       osc.stop(t + BAR);
       nodes.push(osc);
-
       const pad = audioCtx.createOscillator();
       const padGain = audioCtx.createGain();
       pad.connect(padGain);
@@ -171,12 +158,9 @@ function playGameMusic() {
       const t = startTime + i * BEAT;
       const isKick  = i % 4 === 0 || i % 4 === 2;
       const isSnare = i % 4 === 1 || i % 4 === 3;
-
       const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
       const data = buf.getChannelData(0);
-      for (let j = 0; j < data.length; j++) {
-        data[j] = (Math.random() * 2 - 1) * (1 - j / data.length);
-      }
+      for (let j = 0; j < data.length; j++) data[j] = (Math.random() * 2 - 1) * (1 - j / data.length);
       const src = audioCtx.createBufferSource();
       const gain = audioCtx.createGain();
       src.buffer = buf;
@@ -185,12 +169,9 @@ function playGameMusic() {
       gain.gain.value = isKick ? 0.09 : isSnare ? 0.05 : 0.02;
       src.start(t);
       nodes.push(src);
-
       const hatBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
       const hatData = hatBuf.getChannelData(0);
-      for (let j = 0; j < hatData.length; j++) {
-        hatData[j] = (Math.random() * 2 - 1) * (1 - j / hatData.length);
-      }
+      for (let j = 0; j < hatData.length; j++) hatData[j] = (Math.random() * 2 - 1) * (1 - j / hatData.length);
       const hat = audioCtx.createBufferSource();
       const hatGain = audioCtx.createGain();
       hat.buffer = hatBuf;
@@ -208,7 +189,6 @@ function playGameMusic() {
     scheduleAtmoBass(start);
     schedulePerc(start);
   }
-
   currentMusic = nodes;
 }
 
@@ -231,17 +211,32 @@ const W_T = 6;
 const playerImg = new Image();
 playerImg.src = 'player.png';
 
-// Sprite sheet layout — 8 frames in one row
-// Order: down-left, down-right, up-left, up-right, left-left, left-right, right-left, right-right
-const FRAME_W = 16;  // width of each frame
-const FRAME_H = 16;  // height of each frame
-const SPRITE_SCALE = 2;  // draw at 2x size so it's visible
+const npcImgs = {
+  'Roze': new Image(),
+  'Mary': new Image(),
+  'Mo':   new Image(),
+  'H':    new Image(),
+};
+npcImgs['Roze'].src = 'npc_roze.png';
+npcImgs['Mary'].src = 'npc_mary.png';
+npcImgs['Mo'].src   = 'npc_mo.png';
+npcImgs['H'].src    = 'npc_h.png';
 
-// Animation state
-let playerFrame = 0;       // which frame to show (0-7)
-let playerDir = 0;         // 0=down, 1=up, 2=left, 3=right
-let animTimer = 0;         // counts up to swap walk frames
-const ANIM_SPEED = 12;     // frames between each step
+const FRAME_W = 16;
+const FRAME_H = 16;
+const SPRITE_SCALE = 2;
+
+const npcAnim = {
+  'Roze': { frame: 0, dir: 0, timer: 0 },
+  'Mary': { frame: 0, dir: 0, timer: 0 },
+  'Mo':   { frame: 0, dir: 0, timer: 0 },
+  'H':    { frame: 0, dir: 0, timer: 0 },
+};
+
+let playerFrame = 0;
+let playerDir = 0;
+let animTimer = 0;
+const ANIM_SPEED = 12;
 
 // ── WALLS ────────────────────────────────────────────────────────
 const walls = [
@@ -407,13 +402,11 @@ function update() {
   if (insideHouse(nx, player.y, R) && !hitsWall(nx, player.y, R) && !hitsFurniture(nx, player.y, R)) player.x = nx;
   if (insideHouse(player.x, ny, R) && !hitsWall(player.x, ny, R) && !hitsFurniture(player.x, ny, R)) player.y = ny;
 
-  // Trail
   if (dx !== 0 || dy !== 0) {
     trail.push({ x: player.x, y: player.y });
     if (trail.length > TRAIL_LENGTH) trail.shift();
   }
 
-  // Drop
   if ((keys['e'] || keys['E']) && dropCooldown === 0 && carrying !== null) {
     carrying.x = player.x;
     carrying.y = player.y;
@@ -423,7 +416,6 @@ function update() {
   }
   if (dropCooldown > 0) dropCooldown--;
 
-  // Release following NPC
   if (keys['r'] || keys['R']) {
     const following = npcs.find(n => n.state === 'following');
     if (following) {
@@ -433,7 +425,6 @@ function update() {
     }
   }
 
-  // Pickup
   if (carrying === null && dropCooldown === 0) {
     for (const item of items) {
       if (item.collected || item.delivered) continue;
@@ -446,7 +437,6 @@ function update() {
     }
   }
 
-  // NPC spawning
   askTimer--;
   if (askTimer <= 0) {
     const idleNPCs = npcs.filter(n => n.state === 'idle');
@@ -462,7 +452,6 @@ function update() {
     askTimer = getAskInterval();
   }
 
-  // NPC logic
   activeNPC = null;
   for (const npc of npcs) {
     if (npc.state === 'asking') {
@@ -493,12 +482,33 @@ function update() {
       }
     }
 
-    if (npc.state === 'following') {
+if (npc.state === 'following') {
       const dist = Math.hypot(player.x - npc.x, player.y - npc.y);
-      if (dist > 30) {
+      const anim = npcAnim[npc.name];
+if (dist > 50) {
         const angle = Math.atan2(player.y - npc.y, player.x - npc.x);
         npc.x += Math.cos(angle) * 2;
         npc.y += Math.sin(angle) * 2;
+
+        // Only update direction when actually moving — stops shaking
+const ddx = player.x - npc.x;
+        const ddy = player.y - npc.y;
+        // Only change direction if one axis is clearly dominant (ratio > 1.5)
+        // This stops flickering when moving at near-diagonal angles
+        if      (Math.abs(ddy) > Math.abs(ddx) * 1.5 && ddy > 0) anim.dir = 0;
+        else if (Math.abs(ddy) > Math.abs(ddx) * 1.5 && ddy < 0) anim.dir = 1;
+        else if (Math.abs(ddx) > Math.abs(ddy) * 1.5 && ddx < 0) anim.dir = 2;
+        else if (Math.abs(ddx) > Math.abs(ddy) * 1.5 && ddx > 0) anim.dir = 3;
+        // If neither axis is dominant, keep the current direction
+        anim.timer++;
+        if (anim.timer >= 8) {
+          anim.timer = 0;
+          anim.frame = anim.frame === 0 ? 1 : 0;
+        }
+      } else {
+        // Standing still — freeze on first frame, keep last direction
+        anim.frame = 0;
+        anim.timer = 0;
       }
       if (carrying && carrying.name === npc.asking.name && dist < 40) {
         score++;
@@ -517,6 +527,10 @@ function update() {
     if (npc.state === 'frustrated' || npc.state === 'satisfied') {
       npc.frustratedTimer--;
       if (npc.frustratedTimer <= 0) npc.state = 'idle';
+    }
+    if (npc.state !== 'following') {
+      npcAnim[npc.name].frame = 0;
+      npcAnim[npc.name].timer = 0;
     }
   }
 }
@@ -600,15 +614,28 @@ function drawNPCs() {
     if (npc.state === 'frustrated') bodyColor = '#e04040';
     if (npc.state === 'satisfied')  bodyColor = '#40e080';
 
-    ctx.fillStyle = 'rgba(255,255,255,0.1)';
-    ctx.beginPath();
-    ctx.arc(npc.x, npc.y + bob, 16, 0, Math.PI * 2);
-    ctx.fill();
+    const anim = npcAnim[npc.name];
+    const frameIndex = anim.dir * 2 + anim.frame;
+    const srcX = frameIndex * FRAME_W;
+    const drawW = FRAME_W * SPRITE_SCALE;
+    const drawH = FRAME_H * SPRITE_SCALE;
+    const img = npcImgs[npc.name];
 
-    ctx.fillStyle = bodyColor;
-    ctx.beginPath();
-    ctx.arc(npc.x, npc.y + bob, 10, 0, Math.PI * 2);
-    ctx.fill();
+    if (img && img.complete) {
+      ctx.drawImage(
+        img,
+        srcX, 0,
+        FRAME_W, FRAME_H,
+        npc.x - drawW / 2,
+        npc.y + bob - drawH / 2,
+        drawW, drawH
+      );
+    } else {
+      ctx.fillStyle = bodyColor;
+      ctx.beginPath();
+      ctx.arc(npc.x, npc.y + bob, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.font = 'bold 9px monospace';
@@ -668,7 +695,6 @@ function drawNPCs() {
 }
 
 function drawHUD() {
-  // Carrying
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 10, 220, 30);
   ctx.font = '12px monospace';
@@ -681,21 +707,18 @@ function drawHUD() {
     ctx.fillText('Carrying: nothing', 20, 30);
   }
 
-  // Score
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 48, 120, 26);
   ctx.fillStyle = '#ffe066';
   ctx.font = '12px monospace';
   ctx.fillText('Score: ' + score, 20, 66);
 
-  // Strikes
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(10, 82, 160, 26);
   ctx.fillStyle = frustrationCount >= 2 ? '#e05050' : '#ffffff';
   ctx.font = '12px monospace';
   ctx.fillText('😤 ' + frustrationCount + ' / 3  strikes', 20, 100);
 
-  // Mute button
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
   ctx.roundRect(W - 70, H - 36, 60, 26, 4);
@@ -705,7 +728,6 @@ function drawHUD() {
   ctx.textAlign = 'center';
   ctx.fillText(muted ? 'MUTE' : 'SOUND', W - 40, H - 18);
 
-  // Following indicator
   const following = npcs.find(n => n.state === 'following');
   if (following) {
     const bw = 160, bh = 56;
@@ -735,6 +757,52 @@ function drawHUD() {
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = '10px monospace';
     ctx.fillText('[R] to release', bx + 10, by + 50);
+  }
+}
+
+function drawPlayer() {
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft']  || keys['a']) dx = -1;
+  if (keys['ArrowRight'] || keys['d']) dx = 1;
+  if (keys['ArrowUp']    || keys['w']) dy = -1;
+  if (keys['ArrowDown']  || keys['s']) dy = 1;
+
+  if      (dy > 0) playerDir = 0;
+  else if (dy < 0) playerDir = 1;
+  else if (dx < 0) playerDir = 2;
+  else if (dx > 0) playerDir = 3;
+
+  const moving = dx !== 0 || dy !== 0;
+  if (moving) {
+    animTimer++;
+    if (animTimer >= ANIM_SPEED) {
+      animTimer = 0;
+      playerFrame = playerFrame === 0 ? 1 : 0;
+    }
+  } else {
+    playerFrame = 0;
+    animTimer = 0;
+  }
+
+  const frameIndex = playerDir * 2 + playerFrame;
+  const srcX = frameIndex * FRAME_W;
+  const drawW = FRAME_W * SPRITE_SCALE;
+  const drawH = FRAME_H * SPRITE_SCALE;
+
+  if (playerImg.complete) {
+    ctx.drawImage(
+      playerImg,
+      srcX, 0,
+      FRAME_W, FRAME_H,
+      player.x - drawW / 2,
+      player.y - drawH / 2,
+      drawW, drawH
+    );
+  } else {
+    ctx.fillStyle = player.color;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -820,7 +888,6 @@ function drawGameOverScreen() {
   ctx.font = 'bold 16px monospace';
   ctx.fillText('PLAY AGAIN', W / 2, H / 2 + 87);
 
-  // Mute button on game over screen
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
   ctx.roundRect(W - 70, H - 36, 60, 26, 4);
@@ -829,60 +896,6 @@ function drawGameOverScreen() {
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
   ctx.fillText(muted ? 'MUTE' : 'SOUND', W - 40, H - 18);
-}
-
-function drawPlayer() {
-  // Work out which direction the player is facing
-  let dx = 0, dy = 0;
-  if (keys['ArrowLeft']  || keys['a']) dx = -1;
-  if (keys['ArrowRight'] || keys['d']) dx = 1;
-  if (keys['ArrowUp']    || keys['w']) dy = -1;
-  if (keys['ArrowDown']  || keys['s']) dy = 1;
-
-  // Set direction based on key input
-  if      (dy > 0) playerDir = 0;  // down
-  else if (dy < 0) playerDir = 1;  // up
-  else if (dx < 0) playerDir = 2;  // left
-  else if (dx > 0) playerDir = 3;  // right
-
-  // Animate walk frames when moving
-  const moving = dx !== 0 || dy !== 0;
-  if (moving) {
-    animTimer++;
-    if (animTimer >= ANIM_SPEED) {
-      animTimer = 0;
-      playerFrame = playerFrame === 0 ? 1 : 0; // toggle between frame 0 and 1
-    }
-  } else {
-    playerFrame = 0; // stand still on first frame when not moving
-    animTimer = 0;
-  }
-
-  // Which frame in the sheet to show
-  // Each direction has 2 frames: direction * 2 + walkFrame
-  const frameIndex = playerDir * 2 + playerFrame;
-  const srcX = frameIndex * FRAME_W;
-
-  // Draw sprite centred on player position
-  const drawW = FRAME_W * SPRITE_SCALE;
-  const drawH = FRAME_H * SPRITE_SCALE;
-
-  if (playerImg.complete) {
-    ctx.drawImage(
-      playerImg,
-      srcX, 0,           // source position in sprite sheet
-      FRAME_W, FRAME_H,  // source size
-      player.x - drawW / 2,  // screen x
-      player.y - drawH / 2,  // screen y
-      drawW, drawH            // drawn size
-    );
-  } else {
-    // Fallback circle while image loads
-    ctx.fillStyle = player.color;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.size / 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
 }
 
 // ── DRAW ─────────────────────────────────────────────────────────
@@ -914,7 +927,6 @@ canvas.addEventListener('click', e => {
   const cx = e.clientX - rect.left;
   const cy = e.clientY - rect.top;
 
-  // Mute button — works on all screens
   if (cx > W - 70 && cx < W - 10 && cy > H - 36 && cy < H - 10) {
     muted = !muted;
     if (muted) {
