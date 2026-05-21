@@ -9,12 +9,16 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let muted = false;
 let currentMusic = null;
 
+const masterGain = audioCtx.createGain();
+masterGain.gain.value = 0.4;
+masterGain.connect(audioCtx.destination);
+
 function playSound(freq, type, duration, vol = 0.3) {
   if (muted) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   osc.connect(gain);
-  gain.connect(audioCtx.destination);
+ gain.connect(masterGain);
   osc.type = type;
   osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(freq * 0.5, audioCtx.currentTime + duration);
@@ -54,7 +58,7 @@ function playAtmoMusic() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(masterGain);
       osc.type = 'sine';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.15, startTime + i * noteLen);
@@ -101,7 +105,7 @@ function playGameMusic() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(masterGain);
       osc.type = 'triangle';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.07, t);
@@ -131,7 +135,7 @@ function playGameMusic() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(masterGain);
       osc.type = 'sine';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.12, t);
@@ -165,7 +169,7 @@ function playGameMusic() {
       const gain = audioCtx.createGain();
       src.buffer = buf;
       src.connect(gain);
-      gain.connect(audioCtx.destination);
+      gain.connect(masterGain);
       gain.gain.value = isKick ? 0.09 : isSnare ? 0.05 : 0.02;
       src.start(t);
       nodes.push(src);
