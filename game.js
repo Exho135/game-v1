@@ -1077,11 +1077,11 @@ canvas.addEventListener('touchstart', e => {
  
     // Action buttons — right side
     // H button
-    if (activeNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 180 && pos.y < H - 120) {
+    if (activeNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 170 && pos.y < H - 120) {
       if (activeNPC.state === 'asking') { activeNPC.state = 'following'; } return;
     }
     // N button
-    if (activeNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 110 && pos.y < H - 50) {
+    if (activeNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 100 && pos.y < H - 50) {
       if (activeNPC.state === 'asking') {
         activeNPC.state = 'frustrated';
         activeNPC.frustratedTimer = 180;
@@ -1092,7 +1092,7 @@ canvas.addEventListener('touchstart', e => {
       } return;
     }
     // E button (drop)
-    if (carrying && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 280 && pos.y < H - 220) {
+    if (carrying && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 270 && pos.y < H - 220) {
       if (dropCooldown === 0) {
         carrying.x = player.x; carrying.y = player.y;
         carrying.collected = false; carrying = null; dropCooldown = 60;
@@ -1100,7 +1100,7 @@ canvas.addEventListener('touchstart', e => {
     }
     // R button (release)
     const followingNPC = npcs.find(n => n.state === 'following');
-    if (followingNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 350 && pos.y < H - 290) {
+    if (followingNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 340 && pos.y < H - 290) {
       followingNPC.state = 'asking'; followingNPC.timer = ASK_TIME; return;
     }
  
