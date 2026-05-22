@@ -1,29 +1,8 @@
+// ── SETUP ────────────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
-// Keep internal resolution fixed at 800x600
-// but scale the canvas element to fill the screen
-const W = 800;
-const H = 600;
-canvas.width = W;
-canvas.height = H;
-
-const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window && navigator.maxTouchPoints > 1);
-
-function resizeCanvas() {
-  if (IS_MOBILE) {
-    canvas.style.width  = window.innerWidth  + 'px';
-    canvas.style.height = window.innerHeight + 'px';
-  } else {
-    canvas.style.width  = '800px';
-    canvas.style.height = '600px';
-  }
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', () => {
-  setTimeout(resizeCanvas, 100);
-});
+const W = canvas.width;
+const H = canvas.height;
 
 // ── AUDIO ─────────────────────────────────────────────────────────
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -90,7 +69,7 @@ function playAtmoMusic() {
       const pad = audioCtx.createOscillator();
       const padGain = audioCtx.createGain();
       pad.connect(padGain);
-      padGain.connect(masterGain);
+      padGain.connect(audioCtx.destination);
       pad.type = 'sine';
       pad.frequency.value = freq * 1.5;
       padGain.gain.setValueAtTime(0.05, startTime + i * noteLen);
@@ -137,7 +116,7 @@ function playGameMusic() {
       const harm = audioCtx.createOscillator();
       const harmGain = audioCtx.createGain();
       harm.connect(harmGain);
-      harmGain.connect(masterGain);
+      harmGain.connect(audioCtx.destination);
       harm.type = 'sine';
       harm.frequency.value = freq * 0.5;
       harmGain.gain.setValueAtTime(0.03, t);
@@ -167,7 +146,7 @@ function playGameMusic() {
       const pad = audioCtx.createOscillator();
       const padGain = audioCtx.createGain();
       pad.connect(padGain);
-      padGain.connect(masterGain);
+      padGain.connect(audioCtx.destination);
       pad.type = 'sine';
       pad.frequency.value = freq * 1.5;
       padGain.gain.setValueAtTime(0.04, t);
@@ -201,7 +180,7 @@ function playGameMusic() {
       const hatGain = audioCtx.createGain();
       hat.buffer = hatBuf;
       hat.connect(hatGain);
-      hatGain.connect(masterGain);
+      hatGain.connect(audioCtx.destination);
       hatGain.gain.value = 0.015;
       hat.start(t + BEAT * 0.5);
       nodes.push(hat);
@@ -438,8 +417,6 @@ function update() {
   if (keys['ArrowRight'] || keys['d']) dx += 1;
   if (keys['ArrowUp']    || keys['w']) dy -= 1;
   if (keys['ArrowDown']  || keys['s']) dy += 1;
-  // Joystick input
-  if (joystick.active) { dx += joystick.dx; dy += joystick.dy; }
   if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707; }
 
   const R = player.size / 2;
@@ -828,19 +805,13 @@ function drawPlayer() {
   if (keys['ArrowRight'] || keys['d']) dx = 1;
   if (keys['ArrowUp']    || keys['w']) dy = -1;
   if (keys['ArrowDown']  || keys['s']) dy = 1;
-  // Also read joystick for mobile animation
-  if (joystick.active) {
-    if (Math.abs(joystick.dx) > 0.1) dx = joystick.dx;
-    if (Math.abs(joystick.dy) > 0.1) dy = joystick.dy;
-  }
 
-  // Use dominant axis for direction to avoid flickering
-  if      (Math.abs(dy) > Math.abs(dx) && dy > 0.1)  playerDir = 0;
-  else if (Math.abs(dy) > Math.abs(dx) && dy < -0.1) playerDir = 1;
-  else if (dx < -0.1) playerDir = 2;
-  else if (dx >  0.1) playerDir = 3;
+  if      (dy > 0) playerDir = 0;
+  else if (dy < 0) playerDir = 1;
+  else if (dx < 0) playerDir = 2;
+  else if (dx > 0) playerDir = 3;
 
-  const moving = Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1;
+  const moving = dx !== 0 || dy !== 0;
   if (moving) {
     animTimer++;
     if (animTimer >= ANIM_SPEED) {
@@ -985,7 +956,6 @@ function draw() {
   drawNPCs();
   drawPlayer();
   drawHUD();
-  drawMobileControls();
 
   if (gameState === 'gameover') drawGameOverScreen();
 }
@@ -993,8 +963,8 @@ function draw() {
 // ── CLICK HANDLER ─────────────────────────────────────────────────
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
-  const cx = (e.clientX - rect.left) * (W / rect.width);
-  const cy = (e.clientY - rect.top)  * (H / rect.height);
+  const cx = e.clientX - rect.left;
+  const cy = e.clientY - rect.top;
 
   if (cx > W - 70 && cx < W - 10 && cy > H - 36 && cy < H - 10) {
     muted = !muted;
@@ -1022,225 +992,7 @@ canvas.addEventListener('click', e => {
   }
 });
 
-// ── MOBILE TOUCH CONTROLS ────────────────────────────────────────
-const isMobile = IS_MOBILE;
- 
-// Joystick state
-const joystick = {
-  active: false,
-  baseX: 0, baseY: 0,    // where finger first touched
-  tipX: 0,  tipY: 0,     // where finger currently is
-  dx: 0,    dy: 0,        // normalised direction -1 to 1
-  id: null                // touch identifier
-};
- 
-// Scale factor — canvas is 800x600 but screen may be smaller
- 
-// Convert touch position to canvas coordinates
-
-// Touch start
-function touchToCanvas(touch) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: (touch.clientX - rect.left) * (W / rect.width),
-    y: (touch.clientY - rect.top)  * (H / rect.height)
-  };
-}
-
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  audioCtx.resume();
-  for (const touch of e.changedTouches) {
-    const pos = touchToCanvas(touch);
-    // Title screen — tap START button
-    if (gameState === 'title') {
-      if (pos.x > W/2 - 100 && pos.x < W/2 + 100 && pos.y > H/2 + 88 && pos.y < H/2 + 132) {
-        resetGame(); return;
-      }
-      // Mute button
-      if (pos.x > W - 70 && pos.x < W - 10 && pos.y > H - 36 && pos.y < H - 10) {
-        muted = !muted; if (muted) stopMusic(); else playGameMusic(); return;
-      }
-      return;
-    }
- 
-    // Game over screen — tap PLAY AGAIN
-    if (gameState === 'gameover') {
-      if (pos.x > W/2 - 100 && pos.x < W/2 + 100 && pos.y > H/2 + 60 && pos.y < H/2 + 104) {
-        resetGame(); return;
-      }
-      if (pos.x > W - 70 && pos.x < W - 10 && pos.y > H - 36 && pos.y < H - 10) {
-        muted = !muted; if (muted) stopMusic(); else playAtmoMusic(); return;
-      }
-      return;
-    }
- 
-    // Mute button
-    if (pos.x > W - 70 && pos.x < W - 10 && pos.y > H - 36 && pos.y < H - 10) {
-      muted = !muted;
-      if (muted) stopMusic(); else playGameMusic();
-      return;
-    }
- 
-    // Action buttons — right side
-    // H button
-    if (activeNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 170 && pos.y < H - 120) {
-      if (activeNPC.state === 'asking') { activeNPC.state = 'following'; } return;
-    }
-    // N button
-    if (activeNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 100 && pos.y < H - 50) {
-      if (activeNPC.state === 'asking') {
-        activeNPC.state = 'frustrated';
-        activeNPC.frustratedTimer = 180;
-        activeNPC.asking = null;
-        frustrationCount++;
-        soundFrustration();
-        if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; playAtmoMusic(); }
-      } return;
-    }
-    // E button (drop)
-    if (carrying && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 270 && pos.y < H - 220) {
-      if (dropCooldown === 0) {
-        carrying.x = player.x; carrying.y = player.y;
-        carrying.collected = false; carrying = null; dropCooldown = 60;
-      } return;
-    }
-    // R button (release)
-    const followingNPC = npcs.find(n => n.state === 'following');
-    if (followingNPC && pos.x > W - 130 && pos.x < W - 10 && pos.y > H - 340 && pos.y < H - 290) {
-      followingNPC.state = 'asking'; followingNPC.timer = ASK_TIME; return;
-    }
- 
-    // Joystick — left half of screen, bottom area
-    if (pos.x < W / 2 && pos.y > H / 2 && joystick.id === null) {
-      joystick.active = true;
-      joystick.id = touch.identifier;
-      joystick.baseX = pos.x; joystick.baseY = pos.y;
-      joystick.tipX  = pos.x; joystick.tipY  = pos.y;
-      joystick.dx = 0; joystick.dy = 0;
-    }
-  }
-}, { passive: false });
-
-// Touch move
-canvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  for (const touch of e.changedTouches) {
-    if (touch.identifier === joystick.id) {
-      const pos = touchToCanvas(touch);
-      joystick.tipX = pos.x; joystick.tipY = pos.y;
-      const ddx = pos.x - joystick.baseX;
-      const ddy = pos.y - joystick.baseY;
-      const dist = Math.hypot(ddx, ddy);
-      const maxR = 50;
-      if (dist > 0) {
-        joystick.dx = ddx / Math.max(dist, maxR);
-        joystick.dy = ddy / Math.max(dist, maxR);
-      } else {
-        joystick.dx = 0; joystick.dy = 0;
-      }
-    }
-  }
-}, { passive: false });
- 
-// Touch end
-canvas.addEventListener('touchend', e => {
-  e.preventDefault();
-  for (const touch of e.changedTouches) {
-    if (touch.identifier === joystick.id) {
-      joystick.active = false; joystick.id = null;
-      joystick.dx = 0; joystick.dy = 0;
-    }
-  }
-}, { passive: false });
- 
-// ── MOBILE DRAW ───────────────────────────────────────────────────
-function drawMobileControls() {
-  if (!isMobile && window.innerWidth >= 600) return;
- 
-  // Joystick base
-  if (joystick.active) {
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.beginPath();
-    ctx.arc(joystick.baseX, joystick.baseY, 50, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(joystick.baseX, joystick.baseY, 50, 0, Math.PI * 2);
-    ctx.stroke();
- 
-    // Joystick tip
-    const tipX = joystick.baseX + joystick.dx * 50;
-    const tipY = joystick.baseY + joystick.dy * 50;
-    ctx.fillStyle = 'rgba(93,224,160,0.7)';
-    ctx.beginPath();
-    ctx.arc(tipX, tipY, 22, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    // Show faint joystick hint when not active
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(120, H - 120, 50, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.beginPath();
-    ctx.arc(120, H - 120, 22, 0, Math.PI * 2);
-    ctx.fill();
-  }
- 
-  // Action buttons — right side, only show when relevant
-  const btnW = 110, btnH = 50, btnX = W - 120;
- 
-  // E button — show when carrying
-  if (carrying) {
-    ctx.fillStyle = 'rgba(255,200,60,0.75)';
-    ctx.beginPath();
-    ctx.roundRect(btnX, H - 270, btnW, btnH, 8);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('[E] Drop', btnX + btnW / 2, H - 270 + 32);
-  }
- 
-  // H and N buttons — show when near NPC
-  if (activeNPC && activeNPC.state === 'asking') {
-    ctx.fillStyle = 'rgba(80,224,128,0.75)';
-    ctx.beginPath();
-    ctx.roundRect(btnX, H - 170, btnW, btnH, 8);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('[H] Here!', btnX + btnW / 2, H - 170 + 32);
- 
-    ctx.fillStyle = 'rgba(224,80,80,0.75)';
-    ctx.beginPath();
-    ctx.roundRect(btnX, H - 100, btnW, btnH, 8);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('[N] IDK', btnX + btnW / 2, H - 100 + 32);
-  }
- 
-  // R button — show when NPC is following
-  const followingNPC = npcs.find(n => n.state === 'following');
-  if (followingNPC) {
-    ctx.fillStyle = 'rgba(160,160,255,0.75)';
-    ctx.beginPath();
-    ctx.roundRect(btnX, H - 340, btnW, btnH, 8);
-    ctx.fill();
-    ctx.fillStyle = '#000';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('[R] Release', btnX + btnW / 2, H - 340 + 32);
-  }
-}
- 
-
+// ── LOOP ─────────────────────────────────────────────────────────
 function loop() {
   update();
   draw();
