@@ -1028,15 +1028,6 @@ const joystick = {
 };
  
 // Scale factor — canvas is 800x600 but screen may be smaller
-let scaleX = 1, scaleY = 1;
- 
-function updateScale() {
-  const rect = canvas.getBoundingClientRect();
-  scaleX = W / rect.width;
-  scaleY = H / rect.height;
-}
-updateScale();
-window.addEventListener('resize', updateScale);
  
 // Convert touch position to canvas coordinates
 function touchToCanvas(touch) {
@@ -1048,12 +1039,13 @@ function touchToCanvas(touch) {
 }
  
 // Touch start
-canvas.addEventListener('touchstart', e => {
-  e.preventDefault();
-  audioCtx.resume();
-  for (const touch of e.changedTouches) {
-    const pos = touchToCanvas(touch);
- 
+function touchToCanvas(touch) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (touch.clientX - rect.left) * (W / rect.width),
+    y: (touch.clientY - rect.top)  * (H / rect.height)
+  };
+}
     // Title screen — tap START button
     if (gameState === 'title') {
       if (pos.x > W/2 - 100 && pos.x < W/2 + 100 && pos.y > H/2 + 88 && pos.y < H/2 + 132) {
