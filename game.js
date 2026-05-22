@@ -1006,8 +1006,7 @@ loop();
 // ── Desktop is completely unaffected ─────────────────────────────
 // ══════════════════════════════════════════════════════════════════
 
-const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                  (navigator.maxTouchPoints > 1);
+const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 if (IS_MOBILE) {
 
