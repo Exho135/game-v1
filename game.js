@@ -807,13 +807,19 @@ function drawPlayer() {
   if (keys['ArrowRight'] || keys['d']) dx = 1;
   if (keys['ArrowUp']    || keys['w']) dy = -1;
   if (keys['ArrowDown']  || keys['s']) dy = 1;
+  // Also read joystick for mobile animation
+  if (joystick.active) {
+    if (Math.abs(joystick.dx) > 0.1) dx = joystick.dx;
+    if (Math.abs(joystick.dy) > 0.1) dy = joystick.dy;
+  }
 
-  if      (dy > 0) playerDir = 0;
-  else if (dy < 0) playerDir = 1;
-  else if (dx < 0) playerDir = 2;
-  else if (dx > 0) playerDir = 3;
+  // Use dominant axis for direction to avoid flickering
+  if      (Math.abs(dy) > Math.abs(dx) && dy > 0.1)  playerDir = 0;
+  else if (Math.abs(dy) > Math.abs(dx) && dy < -0.1) playerDir = 1;
+  else if (dx < -0.1) playerDir = 2;
+  else if (dx >  0.1) playerDir = 3;
 
-  const moving = dx !== 0 || dy !== 0;
+  const moving = Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1;
   if (moving) {
     animTimer++;
     if (animTimer >= ANIM_SPEED) {
