@@ -9,8 +9,14 @@ canvas.width = W;
 canvas.height = H;
 
 function resizeCanvas() {
-  canvas.style.width  = window.innerWidth  + 'px';
-  canvas.style.height = window.innerHeight + 'px';
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 'ontouchstart' in window) {
+    canvas.style.width  = window.innerWidth  + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+  } else {
+    // Desktop — restore original fixed size
+    canvas.style.width  = '800px';
+    canvas.style.height = '600px';
+  }
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
