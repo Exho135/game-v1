@@ -1039,6 +1039,12 @@ function touchToCanvas(touch) {
     y: (touch.clientY - rect.top)  * (H / rect.height)
   };
 }
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  audioCtx.resume();
+  for (const touch of e.changedTouches) {
+    const pos = touchToCanvas(touch);
     // Title screen — tap START button
     if (gameState === 'title') {
       if (pos.x > W/2 - 100 && pos.x < W/2 + 100 && pos.y > H/2 + 88 && pos.y < H/2 + 132) {
@@ -1106,8 +1112,9 @@ function touchToCanvas(touch) {
       joystick.tipX  = pos.x; joystick.tipY  = pos.y;
       joystick.dx = 0; joystick.dy = 0;
     }
-   { passive: false };
- 
+  }
+}, { passive: false });
+
 // Touch move
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
