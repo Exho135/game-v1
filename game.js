@@ -1282,7 +1282,10 @@ if (IS_MOBILE) {
 
   // ── PATCH LOOP TO INCLUDE MOBILE ───────────────────────────────
   // Stop the existing loop and restart with mobile additions
-  cancelAnimationFrame(window._loopId);
+  // Stop the default loop by overriding requestAnimationFrame temporarily
+  const _raf = window.requestAnimationFrame;
+  window.requestAnimationFrame = function() { return 0; };
+  setTimeout(() => { window.requestAnimationFrame = _raf; }, 100);
 
   function mobileLoop() {
     mobileUpdate();
