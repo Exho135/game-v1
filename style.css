@@ -24,12 +24,9 @@ body {
 }
 
 canvas {
-  border: 2px solid #333;
+  border: none;
   display: block;
-  /* Scale to fit screen in both orientations */
-  max-width: 100vw;
-  max-height: 100vh;
-  /* Maintain 800x600 aspect ratio */
-  width: min(100vw, calc(100vh * 800 / 600));
-  height: min(100vh, calc(100vw * 600 / 800));
+  /* Stretch to fill the full screen regardless of aspect ratio */
+  width: 100vw;
+  height: 100vh;
 }
