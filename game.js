@@ -1030,14 +1030,7 @@ const joystick = {
 // Scale factor — canvas is 800x600 but screen may be smaller
  
 // Convert touch position to canvas coordinates
-function touchToCanvas(touch) {
-  const rect = canvas.getBoundingClientRect();
-  return {
-    x: (touch.clientX - rect.left) * scaleX,
-    y: (touch.clientY - rect.top)  * scaleY
-  };
-}
- 
+
 // Touch start
 function touchToCanvas(touch) {
   const rect = canvas.getBoundingClientRect();
