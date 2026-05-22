@@ -1005,7 +1005,7 @@ loop();
 // ── MOBILE ONLY — everything below only runs on touch devices ─────
 // ── Desktop is completely unaffected ─────────────────────────────
 // ══════════════════════════════════════════════════════════════════
-ASK_TIME = 900; // 15 seconds on mobile instead of 10
+ASK_TIME = 1800; // 15 seconds on mobile instead of 10
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 if (IS_MOBILE) {
@@ -1314,10 +1314,7 @@ if (IS_MOBILE) {
       // Let update handle it — already ran
     }
 
-    draw();
-    drawMobileControls();
-
-    // Update player direction for sprite animation
+// Update player direction for sprite animation BEFORE drawing
     if (joystick.active && !keysActive) {
       const jdx = joystick.dx;
       const jdy = joystick.dy;
@@ -1331,6 +1328,9 @@ if (IS_MOBILE) {
         if (animTimer >= ANIM_SPEED) { animTimer = 0; playerFrame = playerFrame === 0 ? 1 : 0; }
       }
     }
+
+    draw();
+    drawMobileControls();
 
     window._loopId = requestAnimationFrame(mobileLoop);
   }
