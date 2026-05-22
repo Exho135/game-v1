@@ -1,8 +1,22 @@
-// ── SETUP ────────────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const W = canvas.width;
-const H = canvas.height;
+
+// Keep internal resolution fixed at 800x600
+// but scale the canvas element to fill the screen
+const W = 800;
+const H = 600;
+canvas.width = W;
+canvas.height = H;
+
+function resizeCanvas() {
+  canvas.style.width  = window.innerWidth  + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => {
+  setTimeout(resizeCanvas, 100);
+});
 
 // ── AUDIO ─────────────────────────────────────────────────────────
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
