@@ -10,51 +10,26 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100vw;
   height: 100vh;
   overflow: hidden;
 }
 
 #wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
+  width: 100vw;
+  height: 100vh;
 }
 
 canvas {
   border: 2px solid #333;
+  display: block;
+  /* Scale to fit screen in both orientations */
   max-width: 100vw;
   max-height: 100vh;
-  width: auto;
-  height: auto;
-  display: block;
-}
-
-/* Portrait mode — show rotate message, hide canvas */
-@media (orientation: portrait) and (max-width: 900px) {
-  canvas {
-    /* Still show but stretch to fill width */
-    width: 100vw;
-    height: auto;
-  }
-}
-
-/* Landscape mode — fit canvas to screen height */
-@media (orientation: landscape) and (max-height: 700px) {
-  canvas {
-    height: 100vh;
-    width: auto;
-  }
-}
-
-#rotate-msg {
-  display: none;
-  position: absolute;
-  color: #fff;
-  font-family: monospace;
-  font-size: 18px;
-  text-align: center;
-  padding: 20px;
+  /* Maintain 800x600 aspect ratio */
+  width: min(100vw, calc(100vh * 800 / 600));
+  height: min(100vh, calc(100vw * 600 / 800));
 }
