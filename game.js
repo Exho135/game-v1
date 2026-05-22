@@ -8,12 +8,13 @@ const H = 600;
 canvas.width = W;
 canvas.height = H;
 
+const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window && navigator.maxTouchPoints > 1);
+
 function resizeCanvas() {
-  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || 'ontouchstart' in window) {
+  if (IS_MOBILE) {
     canvas.style.width  = window.innerWidth  + 'px';
     canvas.style.height = window.innerHeight + 'px';
   } else {
-    // Desktop — restore original fixed size
     canvas.style.width  = '800px';
     canvas.style.height = '600px';
   }
@@ -992,8 +993,8 @@ function draw() {
 // ── CLICK HANDLER ─────────────────────────────────────────────────
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
-  const cx = e.clientX - rect.left;
-  const cy = e.clientY - rect.top;
+  const cx = (e.clientX - rect.left) * (W / rect.width);
+  const cy = (e.clientY - rect.top)  * (H / rect.height);
 
   if (cx > W - 70 && cx < W - 10 && cy > H - 36 && cy < H - 10) {
     muted = !muted;
@@ -1022,7 +1023,7 @@ canvas.addEventListener('click', e => {
 });
 
 // ── MOBILE TOUCH CONTROLS ────────────────────────────────────────
-const isMobile = /Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent) || window.innerWidth < 600;
+const isMobile = IS_MOBILE;
  
 // Joystick state
 const joystick = {

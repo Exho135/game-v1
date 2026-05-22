@@ -20,22 +20,7 @@ html, body {
   align-items: center;
 }
 
-/* Desktop — fixed size, centred, with border */
 canvas {
   display: block;
   border: 2px solid #333;
-  width: 800px;
-  height: 600px;
-}
-
-/* Mobile — stretch to fill full screen */
-@media (hover: none) and (pointer: coarse) {
-  canvas {
-    border: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-  }
 }
