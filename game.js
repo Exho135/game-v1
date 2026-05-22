@@ -1106,8 +1106,7 @@ function touchToCanvas(touch) {
       joystick.tipX  = pos.x; joystick.tipY  = pos.y;
       joystick.dx = 0; joystick.dy = 0;
     }
-  }
-}, { passive: false });
+   { passive: false };
  
 // Touch move
 canvas.addEventListener('touchmove', e => {
