@@ -1005,7 +1005,7 @@ loop();
 // ── MOBILE ONLY — everything below only runs on touch devices ─────
 // ── Desktop is completely unaffected ─────────────────────────────
 // ══════════════════════════════════════════════════════════════════
-
+ASK_TIME = 900; // 15 seconds on mobile instead of 10
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 if (IS_MOBILE) {
