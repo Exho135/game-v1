@@ -1032,20 +1032,24 @@ if (IS_MOBILE) {
       canvas.style.height = window.innerHeight + 'px';
       canvas.style.display = 'block';
       rotateMsg.style.display = 'none';
-      // Debug: force a test draw
-      ctx.fillStyle = 'red';
-      ctx.fillRect(0, 0, 200, 50);
-      ctx.fillStyle = 'white';
-      ctx.font = '16px monospace';
-      ctx.fillText('W:' + window.innerWidth + ' H:' + window.innerHeight, 10, 30);
     } else {
       canvas.style.display = 'none';
       rotateMsg.style.display = 'flex';
     }
   }
+
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 150));
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+      resizeCanvas();
+      // Force a redraw after rotation
+      if (window.innerWidth > window.innerHeight) {
+        cancelAnimationFrame(window._rafId);
+        window._rafId = requestAnimationFrame(loop);
+      }
+    }, 150);
+  });
 
   // Longer NPC timer on mobile
   ASK_TIME = 1200;
@@ -1224,7 +1228,7 @@ function loop() {
   update();
   draw();
   drawMobileControls();
-  requestAnimationFrame(loop);
+  window._rafId = requestAnimationFrame(loop);
 }
 
 loop();
