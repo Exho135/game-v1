@@ -1033,6 +1033,18 @@ if (IS_MOBILE) {
   rotateMsg.innerHTML = '<div style="font-size:48px">🔄</div><div>Please rotate your device</div>';
   document.body.appendChild(rotateMsg);
 
+  function resizeCanvas() {
+    if (window.innerWidth > window.innerHeight) {
+      canvas.style.width  = window.innerWidth  + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      canvas.style.display = 'block';
+      rotateMsg.style.display = 'none';
+    } else {
+      canvas.style.display = 'none';
+      rotateMsg.style.display = 'flex';
+    }
+  }
+
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
@@ -1043,18 +1055,7 @@ if (IS_MOBILE) {
     return {
       x: (touch.clientX - rect.left) * (800 / rect.width),
       y: (touch.clientY - rect.top)  * (600 / rect.height)
-};
-  }
-function resizeCanvas() {
-    if (window.innerWidth > window.innerHeight) {
-      canvas.style.width  = window.innerWidth  + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-      canvas.style.display = 'block';
-      rotateMsg.style.display = 'none';
-    } else {
-      canvas.style.display = 'none';
-      rotateMsg.style.display = 'flex';
-    }
+    };
   }
 
   // ── JOYSTICK STATE ─────────────────────────────────────────────
