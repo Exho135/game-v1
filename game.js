@@ -1011,19 +1011,6 @@ const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 if (IS_MOBILE) {
 
   // ── CANVAS SCALING ─────────────────────────────────────────────
-  function resizeCanvas() {
-    if (window.innerWidth > window.innerHeight) {
-      // Landscape — fill full screen
-      canvas.style.width  = window.innerWidth  + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-      canvas.style.display = 'block';
-      rotateMsg.style.display = 'none';
-    } else {
-      // Portrait — show rotate message, hide canvas
-      canvas.style.display = 'none';
-      rotateMsg.style.display = 'flex';
-    }
-  }
 
   // Rotate message overlay
   const rotateMsg = document.createElement('div');
@@ -1056,7 +1043,18 @@ if (IS_MOBILE) {
     return {
       x: (touch.clientX - rect.left) * (800 / rect.width),
       y: (touch.clientY - rect.top)  * (600 / rect.height)
-    };
+};
+  }
+function resizeCanvas() {
+    if (window.innerWidth > window.innerHeight) {
+      canvas.style.width  = window.innerWidth  + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      canvas.style.display = 'block';
+      rotateMsg.style.display = 'none';
+    } else {
+      canvas.style.display = 'none';
+      rotateMsg.style.display = 'flex';
+    }
   }
 
   // ── JOYSTICK STATE ─────────────────────────────────────────────
