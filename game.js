@@ -1008,17 +1008,22 @@ const joystick = { active: false, baseX: 0, baseY: 0, dx: 0, dy: 0, id: null };
 
 // ── MOBILE SETUP ──────────────────────────────────────────────────
 if (IS_MOBILE) {
-  // Prevent all scrolling on mobile
+  // Prevent scrolling
   document.body.style.overflow = 'hidden';
-  document.body.style.position = 'fixed';
-  document.body.style.width = '100%';
-  document.body.style.height = '100%';
+  document.body.style.margin = '0';
+  document.body.style.padding = '0';
+  document.body.style.background = '#000';
+
+  // Position canvas fixed so it fills screen properly
+  canvas.style.position = 'fixed';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
 
   // Rotate message
   const rotateMsg = document.createElement('div');
   rotateMsg.id = 'rotateMsg';
   rotateMsg.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#1a1a2e;color:#5de0a0;font-family:monospace;font-size:22px;text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:20px;z-index:999;';
-  rotateMsg.innerHTML = '<div style="font-size:48px">🔄</div><div>Please rotate your device</div>';
+  rotateMsg.innerHTML = '<div style="font-size:48px">\uD83D\uDD04</div><div>Please rotate your device</div>';
   document.body.appendChild(rotateMsg);
 
   function resizeCanvas() {
