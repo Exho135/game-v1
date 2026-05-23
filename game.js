@@ -999,42 +999,28 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-loop();
 
-// ══════════════════════════════════════════════════════════════════
-// ── MOBILE ONLY — everything below only runs on touch devices ─────
-// ── Desktop is completely unaffected ─────────────────────────────
-// ══════════════════════════════════════════════════════════════════
-
+// ── MOBILE DETECTION ─────────────────────────────────────────────
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
+// ── JOYSTICK (mobile only) ────────────────────────────────────────
+const joystick = { active: false, baseX: 0, baseY: 0, dx: 0, dy: 0, id: null };
+
+// ── MOBILE SETUP ──────────────────────────────────────────────────
 if (IS_MOBILE) {
+  // Prevent all scrolling on mobile
+  document.body.style.overflow = 'hidden';
+  document.body.style.position = 'fixed';
+  document.body.style.width = '100%';
+  document.body.style.height = '100%';
 
-  // ── NPC TIMER — longer on mobile ──────────────────────────────
-  ASK_TIME = 1200;
-
-  // ── ROTATE MESSAGE ────────────────────────────────────────────
+  // Rotate message
   const rotateMsg = document.createElement('div');
-  rotateMsg.style.cssText = `
-    display: none;
-    position: fixed;
-    top: 0; left: 0;
-    width: 100vw; height: 100vh;
-    background: #1a1a2e;
-    color: #5de0a0;
-    font-family: monospace;
-    font-size: 22px;
-    text-align: center;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    z-index: 999;
-  `;
+  rotateMsg.id = 'rotateMsg';
+  rotateMsg.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#1a1a2e;color:#5de0a0;font-family:monospace;font-size:22px;text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:20px;z-index:999;';
   rotateMsg.innerHTML = '<div style="font-size:48px">🔄</div><div>Please rotate your device</div>';
   document.body.appendChild(rotateMsg);
 
-  // ── CANVAS SCALING — defined after rotateMsg ───────────────────
   function resizeCanvas() {
     if (window.innerWidth > window.innerHeight) {
       canvas.style.width  = window.innerWidth  + 'px';
@@ -1046,12 +1032,14 @@ if (IS_MOBILE) {
       rotateMsg.style.display = 'flex';
     }
   }
-
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
+  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 150));
 
-  // ── TOUCH TO CANVAS COORDS ─────────────────────────────────────
+  // Longer NPC timer on mobile
+  ASK_TIME = 1200;
+
+  // Touch coordinate conversion
   function touchToCanvas(touch) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -1060,18 +1048,9 @@ if (IS_MOBILE) {
     };
   }
 
-  // ── JOYSTICK STATE ─────────────────────────────────────────────
-  const joystick = {
-    active: false,
-    baseX: 0, baseY: 0,
-    tipX: 0,  tipY: 0,
-    dx: 0,    dy: 0,
-    id: null
-  };
-
-  // ── TOUCH START ────────────────────────────────────────────────
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
+    e.stopPropagation();
     audioCtx.resume();
     for (const touch of e.changedTouches) {
       const pos = touchToCanvas(touch);
@@ -1083,7 +1062,6 @@ if (IS_MOBILE) {
         }
         return;
       }
-
       if (gameState === 'gameover') {
         if (pos.x > 300 && pos.x < 500 && pos.y > 360 && pos.y < 404) { resetGame(); return; }
         if (pos.x > 730 && pos.x < 790 && pos.y > 564 && pos.y < 590) {
@@ -1092,23 +1070,27 @@ if (IS_MOBILE) {
         return;
       }
 
+      // Mute
       if (pos.x > 730 && pos.x < 790 && pos.y > 564 && pos.y < 590) {
         muted = !muted; if (muted) stopMusic(); else playGameMusic(); return;
       }
-
+      // R button
       const followingNPC = npcs.find(n => n.state === 'following');
       if (followingNPC && pos.x > 650 && pos.x < 790 && pos.y > 260 && pos.y < 320) {
         followingNPC.state = 'asking'; followingNPC.timer = ASK_TIME; return;
       }
+      // E button
       if (carrying && pos.x > 650 && pos.x < 790 && pos.y > 330 && pos.y < 390) {
         if (dropCooldown === 0) {
           carrying.x = player.x; carrying.y = player.y;
           carrying.collected = false; carrying = null; dropCooldown = 60;
         } return;
       }
+      // H button
       if (activeNPC && activeNPC.state === 'asking' && pos.x > 650 && pos.x < 790 && pos.y > 430 && pos.y < 490) {
         activeNPC.state = 'following'; return;
       }
+      // N button
       if (activeNPC && activeNPC.state === 'asking' && pos.x > 650 && pos.x < 790 && pos.y > 500 && pos.y < 560) {
         activeNPC.state = 'frustrated';
         activeNPC.frustratedTimer = 180;
@@ -1118,37 +1100,34 @@ if (IS_MOBILE) {
         if (frustrationCount >= 3) { gameOver = true; gameState = 'gameover'; playAtmoMusic(); }
         return;
       }
-
+      // Joystick
       if (pos.x < 400 && pos.y > 300 && joystick.id === null) {
         joystick.active = true;
         joystick.id = touch.identifier;
         joystick.baseX = pos.x; joystick.baseY = pos.y;
-        joystick.tipX  = pos.x; joystick.tipY  = pos.y;
         joystick.dx = 0; joystick.dy = 0;
       }
     }
   }, { passive: false });
 
-  // ── TOUCH MOVE ─────────────────────────────────────────────────
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
+    e.stopPropagation();
     for (const touch of e.changedTouches) {
       if (touch.identifier === joystick.id) {
         const pos = touchToCanvas(touch);
-        joystick.tipX = pos.x; joystick.tipY = pos.y;
         const ddx = pos.x - joystick.baseX;
         const ddy = pos.y - joystick.baseY;
         const dist = Math.hypot(ddx, ddy);
-        const maxR = 50;
-        joystick.dx = ddx / Math.max(dist, maxR);
-        joystick.dy = ddy / Math.max(dist, maxR);
+        joystick.dx = ddx / Math.max(dist, 50);
+        joystick.dy = ddy / Math.max(dist, 50);
       }
     }
   }, { passive: false });
 
-  // ── TOUCH END ──────────────────────────────────────────────────
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
+    e.stopPropagation();
     for (const touch of e.changedTouches) {
       if (touch.identifier === joystick.id) {
         joystick.active = false; joystick.id = null;
@@ -1156,85 +1135,68 @@ if (IS_MOBILE) {
       }
     }
   }, { passive: false });
+}
 
-  // ── DRAW MOBILE CONTROLS ───────────────────────────────────────
-  function drawMobileControls() {
-    if (gameState !== 'playing') return;
+// ── DRAW MOBILE CONTROLS ──────────────────────────────────────────
+function drawMobileControls() {
+  if (!IS_MOBILE || gameState !== 'playing') return;
+  const btnW = 130, btnH = 56, btnX = 800 - 140;
 
-    const btnW = 130, btnH = 56;
-    const btnX = 800 - btnW - 10;
-
-    if (joystick.active) {
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.beginPath();
-      ctx.arc(joystick.baseX, joystick.baseY, 55, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(joystick.baseX, joystick.baseY, 55, 0, Math.PI * 2);
-      ctx.stroke();
-      const tipX = joystick.baseX + joystick.dx * 55;
-      const tipY = joystick.baseY + joystick.dy * 55;
-      ctx.fillStyle = 'rgba(93,224,160,0.75)';
-      ctx.beginPath();
-      ctx.arc(tipX, tipY, 26, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(120, 480, 55, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.07)';
-      ctx.beginPath();
-      ctx.arc(120, 480, 26, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    const followingNPC = npcs.find(n => n.state === 'following');
-    if (followingNPC) {
-      ctx.fillStyle = 'rgba(160,160,255,0.8)';
-      ctx.beginPath(); ctx.roundRect(btnX, 260, btnW, btnH, 8); ctx.fill();
-      ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('[R] Release', btnX + btnW / 2, 294);
-    }
-    if (carrying) {
-      ctx.fillStyle = 'rgba(255,200,60,0.8)';
-      ctx.beginPath(); ctx.roundRect(btnX, 330, btnW, btnH, 8); ctx.fill();
-      ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('[E] Drop', btnX + btnW / 2, 364);
-    }
-    if (activeNPC && activeNPC.state === 'asking') {
-      ctx.fillStyle = 'rgba(80,224,128,0.8)';
-      ctx.beginPath(); ctx.roundRect(btnX, 430, btnW, btnH, 8); ctx.fill();
-      ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('[H] Here!', btnX + btnW / 2, 464);
-
-      ctx.fillStyle = 'rgba(224,80,80,0.8)';
-      ctx.beginPath(); ctx.roundRect(btnX, 500, btnW, btnH, 8); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
-      ctx.fillText('[N] IDK', btnX + btnW / 2, 534);
-    }
+  // Joystick
+  if (joystick.active) {
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, 55, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(joystick.baseX, joystick.baseY, 55, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(93,224,160,0.75)';
+    ctx.beginPath(); ctx.arc(joystick.baseX + joystick.dx * 55, joystick.baseY + joystick.dy * 55, 26, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(120, 480, 55, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.07)';
+    ctx.beginPath(); ctx.arc(120, 480, 26, 0, Math.PI * 2); ctx.fill();
   }
 
-  // ── MOBILE LOOP ────────────────────────────────────────────────
-  cancelAnimationFrame(window._loopId);
+  const followingNPC = npcs.find(n => n.state === 'following');
+  if (followingNPC) {
+    ctx.fillStyle = 'rgba(160,160,255,0.85)';
+    ctx.beginPath(); ctx.roundRect(btnX, 260, btnW, btnH, 8); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('[R] Release', btnX + btnW/2, 294);
+  }
+  if (carrying) {
+    ctx.fillStyle = 'rgba(255,200,60,0.85)';
+    ctx.beginPath(); ctx.roundRect(btnX, 330, btnW, btnH, 8); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('[E] Drop', btnX + btnW/2, 364);
+  }
+  if (activeNPC && activeNPC.state === 'asking') {
+    ctx.fillStyle = 'rgba(80,224,128,0.85)';
+    ctx.beginPath(); ctx.roundRect(btnX, 430, btnW, btnH, 8); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('[H] Here!', btnX + btnW/2, 464);
+    ctx.fillStyle = 'rgba(224,80,80,0.85)';
+    ctx.beginPath(); ctx.roundRect(btnX, 500, btnW, btnH, 8); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+    ctx.fillText('[N] IDK', btnX + btnW/2, 534);
+  }
+}
 
-  function mobileLoop() {
+// ── UNIFIED LOOP ──────────────────────────────────────────────────
+function loop() {
+  // Mobile joystick movement
+  if (IS_MOBILE && joystick.active) {
     const R = player.size / 2;
     const keysActive = keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['ArrowDown'] ||
                        keys['a'] || keys['d'] || keys['w'] || keys['s'];
-
-    if (joystick.active && !keysActive) {
-      let jdx = joystick.dx * player.speed;
-      let jdy = joystick.dy * player.speed;
-      const nx = player.x + jdx;
-      const ny = player.y + jdy;
+    if (!keysActive) {
+      const nx = player.x + joystick.dx * player.speed;
+      const ny = player.y + joystick.dy * player.speed;
       if (insideHouse(nx, player.y, R) && !hitsWall(nx, player.y, R) && !hitsFurniture(nx, player.y, R)) player.x = nx;
       if (insideHouse(player.x, ny, R) && !hitsWall(player.x, ny, R) && !hitsFurniture(player.x, ny, R)) player.y = ny;
 
-      if (Math.abs(joystick.dy) > Math.abs(joystick.dx) && joystick.dy > 0.1)  playerDir = 0;
+      // Sprite direction from joystick
+      if      (Math.abs(joystick.dy) > Math.abs(joystick.dx) && joystick.dy >  0.1) playerDir = 0;
       else if (Math.abs(joystick.dy) > Math.abs(joystick.dx) && joystick.dy < -0.1) playerDir = 1;
       else if (joystick.dx < -0.1) playerDir = 2;
       else if (joystick.dx >  0.1) playerDir = 3;
@@ -1246,12 +1208,12 @@ if (IS_MOBILE) {
         if (trail.length > TRAIL_LENGTH) trail.shift();
       }
     }
-
-    update();
-    draw();
-    drawMobileControls();
-    window._loopId = requestAnimationFrame(mobileLoop);
   }
 
-  window._loopId = requestAnimationFrame(mobileLoop);
+  update();
+  draw();
+  drawMobileControls();
+  requestAnimationFrame(loop);
 }
+
+loop();
