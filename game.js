@@ -1005,14 +1005,15 @@ loop();
 // ── MOBILE ONLY — everything below only runs on touch devices ─────
 // ── Desktop is completely unaffected ─────────────────────────────
 // ══════════════════════════════════════════════════════════════════
-ASK_TIME = 1800; // 15 seconds on mobile instead of 10
+
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 if (IS_MOBILE) {
 
-  // ── CANVAS SCALING ─────────────────────────────────────────────
+  // ── NPC TIMER — longer on mobile ──────────────────────────────
+  ASK_TIME = 1200;
 
-  // Rotate message overlay
+  // ── ROTATE MESSAGE ────────────────────────────────────────────
   const rotateMsg = document.createElement('div');
   rotateMsg.style.cssText = `
     display: none;
@@ -1033,6 +1034,7 @@ if (IS_MOBILE) {
   rotateMsg.innerHTML = '<div style="font-size:48px">🔄</div><div>Please rotate your device</div>';
   document.body.appendChild(rotateMsg);
 
+  // ── CANVAS SCALING — defined after rotateMsg ───────────────────
   function resizeCanvas() {
     if (window.innerWidth > window.innerHeight) {
       canvas.style.width  = window.innerWidth  + 'px';
@@ -1074,58 +1076,40 @@ if (IS_MOBILE) {
     for (const touch of e.changedTouches) {
       const pos = touchToCanvas(touch);
 
-      // Title screen
       if (gameState === 'title') {
-        if (pos.x > 400 - 100 && pos.x < 400 + 100 && pos.y > 300 + 88 && pos.y < 300 + 132) {
-          resetGame(); return;
-        }
-        if (pos.x > 800 - 70 && pos.x < 800 - 10 && pos.y > 600 - 36 && pos.y < 600 - 10) {
+        if (pos.x > 300 && pos.x < 500 && pos.y > 388 && pos.y < 432) { resetGame(); return; }
+        if (pos.x > 730 && pos.x < 790 && pos.y > 564 && pos.y < 590) {
           muted = !muted; if (muted) stopMusic(); else playGameMusic(); return;
         }
         return;
       }
 
-      // Game over screen
       if (gameState === 'gameover') {
-        if (pos.x > 400 - 100 && pos.x < 400 + 100 && pos.y > 300 + 60 && pos.y < 300 + 104) {
-          resetGame(); return;
-        }
-        if (pos.x > 800 - 70 && pos.x < 800 - 10 && pos.y > 600 - 36 && pos.y < 600 - 10) {
+        if (pos.x > 300 && pos.x < 500 && pos.y > 360 && pos.y < 404) { resetGame(); return; }
+        if (pos.x > 730 && pos.x < 790 && pos.y > 564 && pos.y < 590) {
           muted = !muted; if (muted) stopMusic(); else playAtmoMusic(); return;
         }
         return;
       }
 
-      // Mute button
-      if (pos.x > 800 - 70 && pos.x < 800 - 10 && pos.y > 600 - 36 && pos.y < 600 - 10) {
-        muted = !muted;
-        if (muted) stopMusic(); else playGameMusic();
-        return;
+      if (pos.x > 730 && pos.x < 790 && pos.y > 564 && pos.y < 590) {
+        muted = !muted; if (muted) stopMusic(); else playGameMusic(); return;
       }
 
-      // R button — release following NPC
       const followingNPC = npcs.find(n => n.state === 'following');
-      if (followingNPC && pos.x > 800 - 150 && pos.x < 800 - 10 && pos.y > 600 - 340 && pos.y < 600 - 280) {
+      if (followingNPC && pos.x > 650 && pos.x < 790 && pos.y > 260 && pos.y < 320) {
         followingNPC.state = 'asking'; followingNPC.timer = ASK_TIME; return;
       }
-
-      // E button — drop item
-      if (carrying && pos.x > 800 - 150 && pos.x < 800 - 10 && pos.y > 600 - 270 && pos.y < 600 - 210) {
+      if (carrying && pos.x > 650 && pos.x < 790 && pos.y > 330 && pos.y < 390) {
         if (dropCooldown === 0) {
           carrying.x = player.x; carrying.y = player.y;
           carrying.collected = false; carrying = null; dropCooldown = 60;
         } return;
       }
-
-      // H button — here
-      if (activeNPC && activeNPC.state === 'asking' &&
-          pos.x > 800 - 150 && pos.x < 800 - 10 && pos.y > 600 - 170 && pos.y < 600 - 110) {
+      if (activeNPC && activeNPC.state === 'asking' && pos.x > 650 && pos.x < 790 && pos.y > 430 && pos.y < 490) {
         activeNPC.state = 'following'; return;
       }
-
-      // N button — idk
-      if (activeNPC && activeNPC.state === 'asking' &&
-          pos.x > 800 - 150 && pos.x < 800 - 10 && pos.y > 600 - 100 && pos.y < 600 - 40) {
+      if (activeNPC && activeNPC.state === 'asking' && pos.x > 650 && pos.x < 790 && pos.y > 500 && pos.y < 560) {
         activeNPC.state = 'frustrated';
         activeNPC.frustratedTimer = 180;
         activeNPC.asking = null;
@@ -1135,7 +1119,6 @@ if (IS_MOBILE) {
         return;
       }
 
-      // Joystick — left half bottom area
       if (pos.x < 400 && pos.y > 300 && joystick.id === null) {
         joystick.active = true;
         joystick.id = touch.identifier;
@@ -1174,36 +1157,13 @@ if (IS_MOBILE) {
     }
   }, { passive: false });
 
-  // ── HOOK JOYSTICK INTO PLAYER MOVEMENT ─────────────────────────
-  // Override update to also read joystick
-  const _originalUpdate = update;
-  window._mobileJoystickActive = false;
-
-  // Patch player movement to include joystick
-  const _origLoop = loop;
-  function mobileUpdate() {
-    // Inject joystick into keys-equivalent before update runs
-    if (joystick.active) {
-      if (Math.abs(joystick.dx) > 0.1 || Math.abs(joystick.dy) > 0.1) {
-        player._jdx = joystick.dx;
-        player._jdy = joystick.dy;
-      } else {
-        player._jdx = 0; player._jdy = 0;
-      }
-    } else {
-      player._jdx = 0; player._jdy = 0;
-    }
-  }
-
   // ── DRAW MOBILE CONTROLS ───────────────────────────────────────
-  const _origDraw = draw;
   function drawMobileControls() {
     if (gameState !== 'playing') return;
 
     const btnW = 130, btnH = 56;
     const btnX = 800 - btnW - 10;
 
-    // Joystick
     if (joystick.active) {
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
       ctx.beginPath();
@@ -1224,116 +1184,72 @@ if (IS_MOBILE) {
       ctx.strokeStyle = 'rgba(255,255,255,0.1)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(120, 600 - 120, 55, 0, Math.PI * 2);
+      ctx.arc(120, 480, 55, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.07)';
       ctx.beginPath();
-      ctx.arc(120, 600 - 120, 26, 0, Math.PI * 2);
+      ctx.arc(120, 480, 26, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // R button
     const followingNPC = npcs.find(n => n.state === 'following');
     if (followingNPC) {
       ctx.fillStyle = 'rgba(160,160,255,0.8)';
-      ctx.beginPath();
-      ctx.roundRect(btnX, 600 - 340, btnW, btnH, 8);
-      ctx.fill();
-      ctx.fillStyle = '#000';
-      ctx.font = 'bold 17px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('[R] Release', btnX + btnW / 2, 600 - 340 + 34);
+      ctx.beginPath(); ctx.roundRect(btnX, 260, btnW, btnH, 8); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('[R] Release', btnX + btnW / 2, 294);
     }
-
-    // E button
     if (carrying) {
       ctx.fillStyle = 'rgba(255,200,60,0.8)';
-      ctx.beginPath();
-      ctx.roundRect(btnX, 600 - 270, btnW, btnH, 8);
-      ctx.fill();
-      ctx.fillStyle = '#000';
-      ctx.font = 'bold 17px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('[E] Drop', btnX + btnW / 2, 600 - 270 + 34);
+      ctx.beginPath(); ctx.roundRect(btnX, 330, btnW, btnH, 8); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('[E] Drop', btnX + btnW / 2, 364);
     }
-
-    // H and N buttons
     if (activeNPC && activeNPC.state === 'asking') {
       ctx.fillStyle = 'rgba(80,224,128,0.8)';
-      ctx.beginPath();
-      ctx.roundRect(btnX, 600 - 170, btnW, btnH, 8);
-      ctx.fill();
-      ctx.fillStyle = '#000';
-      ctx.font = 'bold 17px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('[H] Here!', btnX + btnW / 2, 600 - 170 + 34);
+      ctx.beginPath(); ctx.roundRect(btnX, 430, btnW, btnH, 8); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('[H] Here!', btnX + btnW / 2, 464);
 
       ctx.fillStyle = 'rgba(224,80,80,0.8)';
-      ctx.beginPath();
-      ctx.roundRect(btnX, 600 - 100, btnW, btnH, 8);
-      ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 17px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('[N] IDK', btnX + btnW / 2, 600 - 100 + 34);
+      ctx.beginPath(); ctx.roundRect(btnX, 500, btnW, btnH, 8); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
+      ctx.fillText('[N] IDK', btnX + btnW / 2, 534);
     }
   }
 
-  // ── PATCH LOOP TO INCLUDE MOBILE ───────────────────────────────
-  // Stop the existing loop and restart with mobile additions
-  // Stop the default loop by overriding requestAnimationFrame temporarily
-  const _raf = window.requestAnimationFrame;
-  window.requestAnimationFrame = function() { return 0; };
-  setTimeout(() => { window.requestAnimationFrame = _raf; }, 100);
+  // ── MOBILE LOOP ────────────────────────────────────────────────
+  cancelAnimationFrame(window._loopId);
 
   function mobileLoop() {
-    mobileUpdate();
-
-    // Temporarily inject joystick as movement
-    const origX = player.x;
-    const origY = player.y;
     const R = player.size / 2;
+    const keysActive = keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['ArrowDown'] ||
+                       keys['a'] || keys['d'] || keys['w'] || keys['s'];
 
-    if (player._jdx !== undefined && (Math.abs(player._jdx) > 0.1 || Math.abs(player._jdy) > 0.1)) {
-      let jdx = player._jdx * player.speed;
-      let jdy = player._jdy * player.speed;
-      if (player._jdx !== 0 && player._jdy !== 0) { jdx *= 0.707; jdy *= 0.707; }
+    if (joystick.active && !keysActive) {
+      let jdx = joystick.dx * player.speed;
+      let jdy = joystick.dy * player.speed;
       const nx = player.x + jdx;
       const ny = player.y + jdy;
       if (insideHouse(nx, player.y, R) && !hitsWall(nx, player.y, R) && !hitsFurniture(nx, player.y, R)) player.x = nx;
       if (insideHouse(player.x, ny, R) && !hitsWall(player.x, ny, R) && !hitsFurniture(player.x, ny, R)) player.y = ny;
-    }
 
-    update();
+      if (Math.abs(joystick.dy) > Math.abs(joystick.dx) && joystick.dy > 0.1)  playerDir = 0;
+      else if (Math.abs(joystick.dy) > Math.abs(joystick.dx) && joystick.dy < -0.1) playerDir = 1;
+      else if (joystick.dx < -0.1) playerDir = 2;
+      else if (joystick.dx >  0.1) playerDir = 3;
+      animTimer++;
+      if (animTimer >= ANIM_SPEED) { animTimer = 0; playerFrame = playerFrame === 0 ? 1 : 0; }
 
-    // Restore position if update moved player (avoid double movement)
-    // Actually we want update to run normally for NPCs etc, just not double-move player
-    // So we only apply joystick if keys aren't pressed
-    const keysActive = keys['ArrowLeft'] || keys['ArrowRight'] || keys['ArrowUp'] || keys['ArrowDown'] ||
-                       keys['a'] || keys['d'] || keys['w'] || keys['s'];
-    if (keysActive) {
-      player.x = origX; player.y = origY;
-      // Let update handle it — already ran
-    }
-
-// Update player direction for sprite animation BEFORE drawing
-    if (joystick.active && !keysActive) {
-      const jdx = joystick.dx;
-      const jdy = joystick.dy;
-      if      (Math.abs(jdy) > Math.abs(jdx) && jdy > 0.1)  playerDir = 0;
-      else if (Math.abs(jdy) > Math.abs(jdx) && jdy < -0.1) playerDir = 1;
-      else if (jdx < -0.1) playerDir = 2;
-      else if (jdx >  0.1) playerDir = 3;
-      const moving = Math.abs(jdx) > 0.1 || Math.abs(jdy) > 0.1;
-      if (moving) {
-        animTimer++;
-        if (animTimer >= ANIM_SPEED) { animTimer = 0; playerFrame = playerFrame === 0 ? 1 : 0; }
+      if (Math.abs(joystick.dx) > 0.1 || Math.abs(joystick.dy) > 0.1) {
+        trail.push({ x: player.x, y: player.y });
+        if (trail.length > TRAIL_LENGTH) trail.shift();
       }
     }
 
+    update();
     draw();
     drawMobileControls();
-
     window._loopId = requestAnimationFrame(mobileLoop);
   }
 
