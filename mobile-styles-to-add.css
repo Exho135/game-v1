@@ -1,0 +1,39 @@
+/* ═══════════════════════════════════════════════════════════════
+   CHOP CHOP — mobile styles
+   Paste EVERYTHING below at the very bottom of your style.css.
+   Do not delete or change anything already in that file.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Applies everywhere, desktop included, but changes nothing visual.
+   touch-action: none is the critical line — without it, dragging
+   the joystick pans the page instead of moving the player. */
+#gameCanvas {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch devices held sideways only.
+   pointer: coarse + hover: none means a finger, not a mouse — so a
+   small desktop browser window can never trigger this block. */
+@media (orientation: landscape) and (pointer: coarse) and (hover: none) {
+
+  /* Fit the canvas to the screen height so it stops being clipped.
+     height is declared twice on purpose: svh is the correct unit
+     but the vh line is a fallback for older browsers.
+     svh = smallest viewport height, so the bottom of the canvas is
+     never hidden behind Safari's toolbar. That matters because the
+     joystick and buttons are drawn at the bottom of the canvas.
+
+     NOTE: this scales the canvas visually only. Nothing here or in
+     game.js ever changes the canvas width/height attributes — those
+     stay at 800x600. Changing them is what wipes the canvas black. */
+  #gameCanvas {
+    height: 100vh;
+    height: 100svh;
+    width: auto;
+    max-width: 100vw;
+    border: none;   /* reclaims the 4px your border would eat */
+  }
+}

@@ -352,10 +352,9 @@ const player = {
 };
 
 // ── KEYBOARD ─────────────────────────────────────────────────────
-const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
-  e.preventDefault();
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.key] = false; });
 
