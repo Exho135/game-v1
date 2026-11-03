@@ -334,7 +334,7 @@ let activeNPC = null;
 let askTimer = 180;
 let frame = 0;
 let gameState = 'title';
-const ASK_TIME = 600;
+let ASK_TIME = 600;
 
 // ── NPCS ──────────────────────────────────────────────────────────
 const npcDefs = [
@@ -352,6 +352,7 @@ const player = {
 };
 
 // ── KEYBOARD ─────────────────────────────────────────────────────
+const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
