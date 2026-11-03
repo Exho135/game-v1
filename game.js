@@ -1028,8 +1028,14 @@ if (IS_MOBILE) {
 
   function resizeCanvas() {
     if (window.innerWidth > window.innerHeight) {
-      canvas.style.width  = window.innerWidth  + 'px';
-      canvas.style.height = window.innerHeight + 'px';
+      // Keep the 800x600 aspect ratio and centre it (black bars instead of stretching)
+      const scale = Math.min(window.innerWidth / 800, window.innerHeight / 600);
+      const w = Math.floor(800 * scale);
+      const h = Math.floor(600 * scale);
+      canvas.style.width  = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.style.left   = Math.floor((window.innerWidth  - w) / 2) + 'px';
+      canvas.style.top    = Math.floor((window.innerHeight - h) / 2) + 'px';
       canvas.style.display = 'block';
       rotateMsg.style.display = 'none';
     } else {
@@ -1040,6 +1046,7 @@ if (IS_MOBILE) {
 
   resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
+    document.addEventListener('fullscreenchange', () => setTimeout(resizeCanvas, 100));
   window.addEventListener('orientationchange', () => {
     setTimeout(() => {
       resizeCanvas();
@@ -1143,6 +1150,15 @@ if (IS_MOBILE) {
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     e.stopPropagation();
+        // Request fullscreen on first tap (Android / iPad; iPhone Safari doesn't support it)
+    const docEl = document.documentElement;
+    if (!document.fullscreenElement && docEl.requestFullscreen) {
+      docEl.requestFullscreen().then(() => {
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      }).catch(() => {});
+    }
     for (const touch of e.changedTouches) {
       if (touch.identifier === joystick.id) {
         joystick.active = false; joystick.id = null;
