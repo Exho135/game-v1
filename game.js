@@ -1070,7 +1070,7 @@ if (IS_MOBILE) {
     };
   }
 
-  canvas.addEventListener('touchstart', e => {
+  document.addEventListener('touchstart', e => {
     e.preventDefault();
     e.stopPropagation();
     audioCtx.resume();
@@ -1132,7 +1132,7 @@ if (IS_MOBILE) {
     }
   }, { passive: false });
 
-  canvas.addEventListener('touchmove', e => {
+  document.addEventListener('touchmove', e => {
     e.preventDefault();
     e.stopPropagation();
     for (const touch of e.changedTouches) {
@@ -1147,7 +1147,7 @@ if (IS_MOBILE) {
     }
   }, { passive: false });
 
-  canvas.addEventListener('touchend', e => {
+  document.addEventListener('touchend', e => {
     e.preventDefault();
     e.stopPropagation();
         // Request fullscreen on first tap (Android / iPad; iPhone Safari doesn't support it)
