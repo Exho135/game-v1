@@ -157,14 +157,19 @@ function playGameMusic() {
     });
   }
 
+  // Build the noise sounds once and reuse them (much faster on phones)
+  const noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+  const noiseData = noiseBuf.getChannelData(0);
+  for (let j = 0; j < noiseData.length; j++) noiseData[j] = (Math.random() * 2 - 1) * (1 - j / noiseData.length);
+  const hatNoiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
+  const hatNoiseData = hatNoiseBuf.getChannelData(0);
+  for (let j = 0; j < hatNoiseData.length; j++) hatNoiseData[j] = (Math.random() * 2 - 1) * (1 - j / hatNoiseData.length);
   function schedulePerc(startTime) {
     for (let i = 0; i < 16; i++) {
       const t = startTime + i * BEAT;
       const isKick  = i % 4 === 0 || i % 4 === 2;
       const isSnare = i % 4 === 1 || i % 4 === 3;
-      const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let j = 0; j < data.length; j++) data[j] = (Math.random() * 2 - 1) * (1 - j / data.length);
+      const buf = noiseBuf;
       const src = audioCtx.createBufferSource();
       const gain = audioCtx.createGain();
       src.buffer = buf;
@@ -173,9 +178,7 @@ function playGameMusic() {
       gain.gain.value = isKick ? 0.09 : isSnare ? 0.05 : 0.02;
       src.start(t);
       nodes.push(src);
-      const hatBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
-      const hatData = hatBuf.getChannelData(0);
-      for (let j = 0; j < hatData.length; j++) hatData[j] = (Math.random() * 2 - 1) * (1 - j / hatData.length);
+      const hatBuf = hatNoiseBuf;
       const hat = audioCtx.createBufferSource();
       const hatGain = audioCtx.createGain();
       hat.buffer = hatBuf;
@@ -354,10 +357,10 @@ const player = {
 // ── KEYBOARD ─────────────────────────────────────────────────────
 const keys = {};
 window.addEventListener('keydown', e => {
-  keys[e.key] = true;
+  keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = true;
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
 });
-window.addEventListener('keyup', e => { keys[e.key] = false; });
+window.addEventListener('keyup', e => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
 
 // ── COLLISION ────────────────────────────────────────────────────
 function circleRect(x, y, r, rx, ry, rw, rh) {
