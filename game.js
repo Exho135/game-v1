@@ -395,9 +395,34 @@ function pickRandomItem() {
   return available[Math.floor(Math.random() * available.length)];
 }
 
+// ── RANDOM ITEM SPOTS ─────────────────────────────────────────────
+const roomBounds = {
+  kitchen:  roomFloors[0],
+  living:   roomFloors[1],
+  bedroom:  roomFloors[2],
+  bathroom: roomFloors[3],
+};
+
+function randomSpotInRoom(roomName, placed) {
+  const r = roomBounds[roomName];
+  const margin = 18;
+  for (let tries = 0; tries < 60; tries++) {
+    const x = r.x + margin + Math.random() * (r.w - margin * 2);
+    const y = r.y + margin + Math.random() * (r.h - margin * 2);
+    if (hitsWall(x, y, 14) || hitsFurniture(x, y, 14)) continue;
+    if (placed.some(p => Math.hypot(p.x - x, p.y - y) < 45)) continue;
+    return { x, y };
+  }
+  return null;
+}
+
 // ── RESET ─────────────────────────────────────────────────────────
 function resetGame() {
-  items = itemDefs.map(d => ({ ...d, collected: false, delivered: false }));
+  items = [];
+  for (const d of itemDefs) {
+    const spot = randomSpotInRoom(d.room, items) || { x: d.x, y: d.y };
+    items.push({ ...d, x: spot.x, y: spot.y, collected: false, delivered: false });
+  }
   npcs = npcDefs.map(d => ({ ...d, state: 'idle', asking: null, timer: 0, frustratedTimer: 0 }));
   frustrationCount = 0;
   score = 0;
