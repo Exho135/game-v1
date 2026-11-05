@@ -409,6 +409,13 @@ function resetGame() {
   gameState = 'playing';
   playGameMusic();
 }
+// ── GO HOME ───────────────────────────────────────────────────────
+function goHome() {
+  stopMusic();
+  gameState = 'title';
+  activeNPC = null;
+  joystick.active = false; joystick.id = null; joystick.dx = 0; joystick.dy = 0;
+}
 
 // ── UPDATE ───────────────────────────────────────────────────────
 function update() {
@@ -769,11 +776,23 @@ function drawHUD() {
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
   ctx.fillText(muted ? 'MUTE' : 'SOUND', W - 40, H - 18);
+    if (gameState === 'playing') {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath();
+    ctx.roundRect(W - 50, 10, 40, 40, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#e05050';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(W - 40, 20); ctx.lineTo(W - 20, 40);
+    ctx.moveTo(W - 20, 20); ctx.lineTo(W - 40, 40);
+    ctx.stroke();
+  }
 
   const following = npcs.find(n => n.state === 'following');
   if (following) {
     const bw = 160, bh = 56;
-    const bx = W - bw - 10, by = 10;
+    const bx = W - bw - 10, by = 60;
 
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.beginPath();
@@ -979,6 +998,10 @@ canvas.addEventListener('click', e => {
     }
     return;
   }
+    if (gameState === 'playing' && cx > W - 50 && cx < W - 10 && cy > 10 && cy < 50) {
+    goHome();
+    return;
+  }
 
   if (gameState === 'title') {
     if (cx > W/2 - 100 && cx < W/2 + 100 && cy > H/2 + 88 && cy < H/2 + 132) {
@@ -1099,6 +1122,8 @@ if (IS_MOBILE) {
       if (pos.x > 730 && pos.x < 790 && pos.y > 564 && pos.y < 590) {
         muted = !muted; if (muted) stopMusic(); else playGameMusic(); return;
       }
+            // X (home) button
+      if (pos.x > 750 && pos.x < 790 && pos.y > 10 && pos.y < 50) { goHome(); return; }
       // R button
       const followingNPC = npcs.find(n => n.state === 'following');
       if (followingNPC && pos.x > 650 && pos.x < 790 && pos.y > 260 && pos.y < 320) {
