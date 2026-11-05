@@ -385,6 +385,9 @@ function hitsFurniture(x, y, r) {
 // ── HELPERS ───────────────────────────────────────────────────────
 function getAskInterval() { return Math.max(120, 300 - score * 10); }
 
+const MAX_FOLLOWERS = 2;
+function followerCount() { return npcs.filter(n => n.state === 'following').length; }
+
 function pickRandomItem() {
   const beingAsked = npcs.map(n => n.asking ? n.asking.name : null);
   const available = items.filter(i => !i.delivered && !beingAsked.includes(i.name));
@@ -493,7 +496,7 @@ function update() {
       const dist = Math.hypot(player.x - npc.x, player.y - npc.y);
       if (dist < 40) activeNPC = npc;
 
-      if (activeNPC === npc && (keys['h'] || keys['H'])) {
+      if (activeNPC === npc && (keys['h'] || keys['H']) && followerCount() < MAX_FOLLOWERS) {
         npc.state = 'following';
         keys['h'] = false; keys['H'] = false;
       }
@@ -1137,7 +1140,7 @@ if (IS_MOBILE) {
         } return;
       }
       // H button
-      if (activeNPC && activeNPC.state === 'asking' && pos.x > 650 && pos.x < 790 && pos.y > 430 && pos.y < 490) {
+      if (activeNPC && activeNPC.state === 'asking' && followerCount() < MAX_FOLLOWERS && pos.x > 650 && pos.x < 790 && pos.y > 430 && pos.y < 490) {
         activeNPC.state = 'following'; return;
       }
       // N button
