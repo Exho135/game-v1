@@ -729,7 +729,7 @@ function drawNPCs() {
         ctx.fillStyle = 'rgba(255,255,255,0.9)';
         ctx.font = 'bold 10px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText('[H] Here!   [N] I don\'t know', npc.x, by - 8);
+        ctx.fillText(followerCount() >= MAX_FOLLOWERS ? 'Hands full!   [N] I don\'t know' : '[H] Here!   [N] I don\'t know', npc.x, by - 8);
       }
     }
 
@@ -792,10 +792,10 @@ function drawHUD() {
     ctx.stroke();
   }
 
-  const following = npcs.find(n => n.state === 'following');
-  if (following) {
+  const followers = npcs.filter(n => n.state === 'following');
+  followers.forEach((following, idx) => {
     const bw = 160, bh = 56;
-    const bx = W - bw - 10, by = 60;
+    const bx = W - bw - 10, by = 60 + idx * 64;
 
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.beginPath();
@@ -820,8 +820,8 @@ function drawHUD() {
 
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = '10px monospace';
-    ctx.fillText('[R] to release', bx + 10, by + 50);
-  }
+    if (idx === 0) ctx.fillText('[R] to release', bx + 10, by + 50);
+  });
 }
 
 function drawPlayer() {
@@ -1233,10 +1233,10 @@ function drawMobileControls() {
     ctx.fillText('[E] Drop', btnX + btnW/2, 364);
   }
   if (activeNPC && activeNPC.state === 'asking') {
-    ctx.fillStyle = 'rgba(80,224,128,0.85)';
+    ctx.fillStyle = followerCount() >= MAX_FOLLOWERS ? 'rgba(120,120,120,0.6)' : 'rgba(80,224,128,0.85)';
     ctx.beginPath(); ctx.roundRect(btnX, 430, btnW, btnH, 8); ctx.fill();
     ctx.fillStyle = '#000'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
-    ctx.fillText('[H] Here!', btnX + btnW/2, 464);
+    ctx.fillText(followerCount() >= MAX_FOLLOWERS ? 'Hands full' : '[H] Here!', btnX + btnW/2, 464);
     ctx.fillStyle = 'rgba(224,80,80,0.85)';
     ctx.beginPath(); ctx.roundRect(btnX, 500, btnW, btnH, 8); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.font = 'bold 17px monospace'; ctx.textAlign = 'center';
