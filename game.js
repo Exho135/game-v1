@@ -1,7 +1,8 @@
 // ── SETUP ────────────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const W = canvas.width;
+const W = 800;   // width of the map itself
+const PANEL_W = (canvas.width - W) / 2;   // space on each side for the info panels
 const H = canvas.height;
 
 // ── AUDIO ─────────────────────────────────────────────────────────
@@ -358,7 +359,7 @@ const player = {
 const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = true;
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','/'].includes(e.key)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.key.length === 1 ? e.key.toLowerCase() : e.key] = false; });
 
@@ -387,6 +388,15 @@ function getAskInterval() { return Math.max(120, 300 - score * 10); }
 
 const MAX_FOLLOWERS = 2;
 function followerCount() { return npcs.filter(n => n.state === 'following').length; }
+
+// ── DIFFICULTY RAMP ───────────────────────────────────────────────
+let gameTime = 0;                  // frames played in the current run
+const START_SPEED = 0.6;           // how fast the game feels at the very start (1 = the old speed)
+const MAX_SPEED = 1.5;             // the fastest it ever gets
+const RAMP_PER_SECOND = 0.003;     // how quickly it speeds up (0.003 = full speed after about 5 minutes)
+function gameSpeed() {
+  return Math.min(MAX_SPEED, START_SPEED + (gameTime / 60) * RAMP_PER_SECOND);
+}
 
 function pickRandomItem() {
   const beingAsked = npcs.map(n => n.asking ? n.asking.name : null);
@@ -428,7 +438,8 @@ function resetGame() {
   score = 0;
   gameOver = false;
   activeNPC = null;
-  askTimer = 180;
+  askTimer = 300;
+  gameTime = 0;
   dropCooldown = 0;
   carrying = null;
   trail.length = 0;
@@ -449,6 +460,7 @@ function goHome() {
 function update() {
   frame++;
   if (gameState === 'title' || gameState === 'gameover') return;
+    gameTime++;
 
   let dx = 0, dy = 0;
   if (keys['ArrowLeft']  || keys['a']) dx -= 1;
@@ -469,7 +481,7 @@ function update() {
     if (trail.length > TRAIL_LENGTH) trail.shift();
   }
 
-  if ((keys['e'] || keys['E']) && dropCooldown === 0 && carrying !== null) {
+  if ((keys['e'] || keys['E'] || keys['/']) && dropCooldown === 0 && carrying !== null) {
     carrying.x = player.x;
     carrying.y = player.y;
     carrying.collected = false;
@@ -478,12 +490,12 @@ function update() {
   }
   if (dropCooldown > 0) dropCooldown--;
 
-  if (keys['r'] || keys['R']) {
+  if (keys['r'] || keys['R'] || keys[',']) {
     const following = npcs.find(n => n.state === 'following');
     if (following) {
       following.state = 'asking';
       following.timer = ASK_TIME;
-      keys['r'] = false; keys['R'] = false;
+      keys['r'] = false; keys['R'] = false; keys[','] = false;
     }
   }
 
@@ -499,7 +511,7 @@ function update() {
     }
   }
 
-  askTimer--;
+  askTimer -= gameSpeed();
   if (askTimer <= 0) {
     const idleNPCs = npcs.filter(n => n.state === 'idle');
     if (idleNPCs.length > 0) {
@@ -517,13 +529,13 @@ function update() {
   activeNPC = null;
   for (const npc of npcs) {
     if (npc.state === 'asking') {
-      npc.timer--;
+      npc.timer -= gameSpeed();
       const dist = Math.hypot(player.x - npc.x, player.y - npc.y);
       if (dist < 40) activeNPC = npc;
 
-      if (activeNPC === npc && (keys['h'] || keys['H']) && followerCount() < MAX_FOLLOWERS) {
+      if (activeNPC === npc && (keys['h'] || keys['H'] || keys['.']) && followerCount() < MAX_FOLLOWERS) {
         npc.state = 'following';
-        keys['h'] = false; keys['H'] = false;
+        keys['h'] = false; keys['H'] = false; keys['.'] = false;
       }
       if (activeNPC === npc && (keys['n'] || keys['N'])) {
         npc.state = 'frustrated';
@@ -1110,30 +1122,59 @@ function drawNPCs() {
   }
 }
 
+function drawPanelCard(x, y, w, h, label) {
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 8);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(label, x + 12, y + 18);
+}
 function drawHUD() {
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(10, 10, 220, 30);
-  ctx.font = '12px monospace';
+  // left panel (outside the map): carrying, score, strikes, controls
+  drawPanelCard(10, 20, 180, 70, 'CARRYING');
   ctx.textAlign = 'left';
   if (carrying) {
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('Carrying: ' + carrying.name + '  [E] drop', 20, 30);
+    ctx.font = 'bold 16px monospace';
+    ctx.fillText(carrying.name, 22, 56);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '10px monospace';
+    ctx.fillText('[E] or [/] to drop', 22, 77);
   } else {
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillText('Carrying: nothing', 20, 30);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = '16px monospace';
+    ctx.fillText('nothing', 22, 56);
   }
 
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(10, 48, 120, 26);
+  drawPanelCard(10, 102, 180, 56, 'SCORE');
   ctx.fillStyle = '#ffe066';
-  ctx.font = '12px monospace';
-  ctx.fillText('Score: ' + score, 20, 66);
+  ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(score, 22, 146);
 
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(10, 82, 160, 26);
+  drawPanelCard(10, 170, 180, 56, 'STRIKES');
   ctx.fillStyle = frustrationCount >= 2 ? '#e05050' : '#ffffff';
-  ctx.font = '12px monospace';
-  ctx.fillText('😤 ' + frustrationCount + ' / 3  strikes', 20, 100);
+  ctx.font = 'bold 20px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('😤 ' + frustrationCount + ' / 3', 22, 214);
+
+  if (!IS_MOBILE) {
+    drawPanelCard(10, 250, 180, 130, 'CONTROLS');
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '10px monospace';
+    ctx.fillText('MOVE     WASD / arrows', 22, 288);
+    ctx.fillText('HERE     H  .  left-click', 22, 308);
+    ctx.fillText('DROP     E  /', 22, 328);
+    ctx.fillText('RELEASE  R  ,  right-click', 22, 348);
+    ctx.fillText('IDK      N', 22, 368);
+  }
+
+  // mute and home buttons stay in the map margin
+  ctx.save();
+  ctx.translate(PANEL_W, 0);
 
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.beginPath();
@@ -1156,10 +1197,12 @@ function drawHUD() {
     ctx.stroke();
   }
 
+    ctx.restore();
+  
   const followers = npcs.filter(n => n.state === 'following');
   followers.forEach((following, idx) => {
     const bw = 160, bh = 56;
-    const bx = W - bw - 10, by = 60 + idx * 64;
+      const bx = canvas.width - bw - 10, by = 20 + idx * 64;
 
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
     ctx.beginPath();
@@ -1184,7 +1227,7 @@ function drawHUD() {
 
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = '10px monospace';
-    if (idx === 0) ctx.fillText('[R] to release', bx + 10, by + 50);
+    if (idx === 0) ctx.fillText('[R] / [,] to release', bx + 10, by + 50);
   });
 }
 
@@ -1261,7 +1304,7 @@ function drawTitleScreen() {
 
   ctx.fillStyle = 'rgba(255,255,255,0.4)';
   ctx.font = '12px monospace';
-  ctx.fillText('WASD/Arrows: move  |  E: drop  |  H: Here  |  N: IDK', W / 2, H / 2 + 65);
+  ctx.fillText('Move: WASD/Arrows  |  Drop: E or /  |  Here: H . or click  |  Release: R , or right-click  |  IDK: N', W / 2, H / 2 + 65);
 
   ctx.fillStyle = '#5de0a0';
   ctx.beginPath();
@@ -1328,11 +1371,22 @@ function drawGameOverScreen() {
 
 // ── DRAW ─────────────────────────────────────────────────────────
 function draw() {
+  // side panels sit outside the map
+  ctx.fillStyle = gameState === 'title' ? '#1a1a2e' : '#1f1a16';
+  ctx.fillRect(0, 0, canvas.width, H);
+
+  // everything on the map is drawn shifted across by the panel width
+  ctx.save();
+  ctx.translate(PANEL_W, 0);
+  ctx.beginPath();
+  ctx.rect(0, 0, W, H);
+  ctx.clip();
   ctx.fillStyle = '#3a3028';
   ctx.fillRect(0, 0, W, H);
 
   if (gameState === 'title') {
     drawTitleScreen();
+    ctx.restore();
     return;
   }
 
@@ -1341,16 +1395,23 @@ function draw() {
   drawItems();
   drawNPCs();
   drawPlayer();
+  ctx.restore();
+
   drawHUD();
 
-  if (gameState === 'gameover') drawGameOverScreen();
+  if (gameState === 'gameover') {
+    ctx.save();
+    ctx.translate(PANEL_W, 0);
+    drawGameOverScreen();
+    ctx.restore();
+  }
 }
 
 // ── CLICK HANDLER ─────────────────────────────────────────────────
 canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
-  const cx = e.clientX - rect.left;
-  const cy = e.clientY - rect.top;
+  const cx = (e.clientX - rect.left) * (canvas.width / rect.width) - PANEL_W;
+  const cy = (e.clientY - rect.top)  * (canvas.height / rect.height);
 
   if (cx > W - 70 && cx < W - 10 && cy > H - 36 && cy < H - 10) {
     muted = !muted;
@@ -1379,6 +1440,22 @@ canvas.addEventListener('click', e => {
     if (cx > W/2 - 100 && cx < W/2 + 100 && cy > H/2 + 60 && cy < H/2 + 104) {
       resetGame();
     }
+  }
+
+  // left-click anywhere else = "Here!" for the housemate you're standing next to
+  if (gameState === 'playing' && activeNPC && activeNPC.state === 'asking' && followerCount() < MAX_FOLLOWERS) {
+    activeNPC.state = 'following';
+  }
+});
+
+// right-click = release a follower
+canvas.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  if (gameState !== 'playing') return;
+  const following = npcs.find(n => n.state === 'following');
+  if (following) {
+    following.state = 'asking';
+    following.timer = ASK_TIME;
   }
 });
 
@@ -1419,8 +1496,8 @@ if (IS_MOBILE) {
   function resizeCanvas() {
     if (window.innerWidth > window.innerHeight) {
       // Keep the 800x600 aspect ratio and centre it (black bars instead of stretching)
-      const scale = Math.min(window.innerWidth / 800, window.innerHeight / 600);
-      const w = Math.floor(800 * scale);
+      const scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
+        const w = Math.floor(canvas.width * scale);
       const h = Math.floor(600 * scale);
       canvas.style.width  = w + 'px';
       canvas.style.height = h + 'px';
@@ -1455,7 +1532,7 @@ if (IS_MOBILE) {
   function touchToCanvas(touch) {
     const rect = canvas.getBoundingClientRect();
     return {
-      x: (touch.clientX - rect.left) * (800 / rect.width),
+      x: (touch.clientX - rect.left) * (canvas.width / rect.width) - PANEL_W,
       y: (touch.clientY - rect.top)  * (600 / rect.height)
     };
   }
@@ -1635,7 +1712,10 @@ function loop() {
 
   update();
   draw();
+  ctx.save();
+  ctx.translate(PANEL_W, 0);
   drawMobileControls();
+  ctx.restore();
   window._rafId = requestAnimationFrame(loop);
 }
 
